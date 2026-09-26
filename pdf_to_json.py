@@ -1,49 +1,67 @@
 import json
 import re
 import pdfplumber
-import arabic_reshaper
-from bidi.algorithm import get_display
+
+def clean_arabic_line(line_text):
+    """
+    Cleans a line of text extracted from reversed PDF streams:
+    1. Removes reversed English text columns (e.g. 'sthgiR dna swaL').
+    2. Reverses character order so Arabic words read left-to-right correctly.
+    """
+    # Remove English characters/words (which are upside down translations in this PDF)
+    line_no_english = re.sub(r'[a-zA-Z]', '', line_text)
+    
+    # Split by whitespace, clean empty tokens
+    tokens = line_no_english.split()
+    if not tokens:
+        return ""
+        
+    # Re-assemble line with proper word and character reversal
+    # Flipped at token level to maintain word-level integrity
+    cleaned_line = " ".join([token[::-1] for token in reversed(tokens)])
+    return cleaned_line
 
 def convert_arabic_pdf_to_json(pdf_path, output_json_path):
     raw_text = ""
     
-    # 1. Extract raw text page by page
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
             page_text = page.extract_text()
             if page_text:
                 raw_text += page_text + "\n"
 
-    # 2. Fix the backward Arabic text
-    reshaped_text = arabic_reshaper.reshape(raw_text)
-    corrected_text = get_display(reshaped_text)
-
-    # 3. Split text by article patterns (now searching the corrected text)
-    article_pattern = r"(مادة\s*\(?\d+\)?|المادة\s*\d+)"
-    parts = re.split(article_pattern, corrected_text)
+    # Match reversed article headers like '١ ةدام' or 'ةدام'
+    reversed_article_pattern = r"([\u0660-\u0669\d]+\s*[\:\-]?\s*\(?\s*ةدام\s*\)?)"
+    parts = re.split(reversed_article_pattern, raw_text)
 
     legal_articles = []
 
-    # 4. Process the split text into structured dictionaries
-    for i in range(1, len(parts), 2):
-        article_header = parts[i].strip()
-        article_text = parts[i+1].strip() if i + 1 < len(parts) else ""
-        
-        # Clean up extra newlines and spaces within the text
-        clean_text = " ".join(article_text.split())
+    if len(parts) > 1:
+        for i in range(1, len(parts), 2):
+            raw_header = parts[i].strip()
+            raw_body = parts[i+1].strip() if i + 1 < len(parts) else ""
 
-        legal_articles.append({
-            "article_number": article_header,
-            "text": clean_text,
-            "source_document": pdf_path
-        })
+            # Fix header (e.g., '١ ةدام' -> 'مادة ١')
+            clean_header = clean_arabic_line(raw_header)
+            
+            # Fix body line by line
+            lines = raw_body.splitlines()
+            cleaned_body_lines = [clean_arabic_line(line) for line in lines]
+            
+            # Remove empty lines and join into cohesive text
+            full_clean_body = " ".join([line for line in cleaned_body_lines if line.strip()])
 
-    # 5. Export to JSON with UTF-8 encoding for Arabic characters
+            legal_articles.append({
+                "article_number": clean_header,
+                "text": full_clean_body,
+                "source_document": pdf_path
+            })
+
+    # Export clean output
     with open(output_json_path, "w", encoding="utf-8") as f:
         json.dump(legal_articles, f, ensure_ascii=False, indent=2)
 
-    print(f"Extraction complete! Saved {len(legal_articles)} articles to {output_json_path}")
+    print(f"Refined extraction complete! Saved {len(legal_articles)} clean articles to {output_json_path}")
 
-# Execute the function
 if __name__ == "__main__":
-    convert_arabic_pdf_to_json("egyptian_civil_code.pdf", "data/legal_corpus.json")
+    convert_arabic_pdf_to_json("data/egyptian_civil_code.pdf", "data/legal_corpus.json")
