@@ -1,0 +1,15 @@
+[33m2cff2b6[m[33m ([m[1;36mHEAD[m[33m, [m[1;32mfeature/vector-database[m[33m)[m HEAD@{0}: commit: feat(phase-2): complete Docker packaging and API endpoints (#2)
+[33m7dbc454[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/feature/vector-database[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{1}: checkout: moving from main to Feature/vector-database
+[33m7dbc454[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/feature/vector-database[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{2}: merge Feature/vector-database: Fast-forward
+[33m9a4f0ad[m[33m ([m[1;32mfeature/data-extraction[m[33m)[m HEAD@{3}: checkout: moving from Feature/vector-database to main
+[33m7dbc454[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/feature/vector-database[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{4}: checkout: moving from feature/phase-2-docker to Feature/vector-database
+[33m77658bc[m[33m ([m[1;31morigin/feature/phase-2-docker[m[33m, [m[1;32mfeature/phase-2-docker[m[33m, [m[1;32mfeature/fastapi-docker[m[33m)[m HEAD@{5}: checkout: moving from feature/fastapi-docker to feature/phase-2-docker
+[33m77658bc[m[33m ([m[1;31morigin/feature/phase-2-docker[m[33m, [m[1;32mfeature/phase-2-docker[m[33m, [m[1;32mfeature/fastapi-docker[m[33m)[m HEAD@{6}: commit: feat(phase-2): complete Docker packaging and optimize FastAPI endpoints
+[33m7dbc454[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/feature/vector-database[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{7}: checkout: moving from feature/vector-database to feature/fastapi-docker
+[33m7dbc454[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/feature/vector-database[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{8}: commit: docs: add project README and finalize vector database pipeline
+[33m3d4aca4[m HEAD@{9}: commit: feat: implement package structure, build FAISS vector database, and pass test suite
+[33m9a4f0ad[m[33m ([m[1;32mfeature/data-extraction[m[33m)[m HEAD@{10}: checkout: moving from main to feature/vector-database
+[33m9a4f0ad[m[33m ([m[1;32mfeature/data-extraction[m[33m)[m HEAD@{11}: checkout: moving from main to main
+[33m9a4f0ad[m[33m ([m[1;32mfeature/data-extraction[m[33m)[m HEAD@{12}: checkout: moving from feature/vector-database to main
+[33m5610fde[m HEAD@{13}: commit: update clean_legal_json.py
+[33m9a4f0ad[m[33m ([m[1;32mfeature/data-extraction[m[33m)[m HEAD@{14}: checkout: moving from feature/vector-database to feature/vector-database
