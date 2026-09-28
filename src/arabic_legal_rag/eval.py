@@ -1,32 +1,61 @@
 import json
 import time
+import re
 import mlflow
 import numpy as np
 from pathlib import Path
-from arabic_legal_rag.pipeline import RAGPipeline
+from arabic_legal_rag.utils import load_config
+from arabic_legal_rag.model import get_embedding_model, load_vector_store
 
-def compute_metrics(eval_dataset: list, pipeline: RAGPipeline, top_k: int = 3):
+def normalize_digits(text: str) -> str:
+    """Converts Eastern Arabic numerals (٠١٢٣٤٥٦٧٨٩) to Western ASCII digits (0123456789)."""
+    eastern_to_western = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
+    return text.translate(eastern_to_western)
+
+def extract_article_num(raw_val) -> str:
+    if not raw_val:
+        return ""
+    # Convert Eastern digits to ASCII digits first
+    normalized_text = normalize_digits(str(raw_val))
+    # Extract digit sequence
+    digits = re.findall(r'\d+', normalized_text)
+    return digits[0] if digits else normalized_text.strip()
+
+def compute_metrics(eval_dataset: list, top_k: int = 3):
+    # 1. Load config, embedding model, and FAISS index ONCE to fix latency
+    config = load_config("configs/config.yaml")
+    embeddings = get_embedding_model(config["model"]["embedding_model"])
+    vector_store = load_vector_store(config["vector_db"]["index_dir"], embeddings)
+
     hits = 0
     mrr_sum = 0.0
     latencies = []
 
     for item in eval_dataset:
         query = item["query"]
-        expected = [str(a) for a in item["expected_articles"]]
+        expected = [str(a).strip() for a in item["expected_articles"]]
 
         start_time = time.time()
-        results = pipeline.search(query, top_k=top_k)
+        # Query FAISS index directly using loaded store
+        results = vector_store.similarity_search_with_score(query, k=top_k)
         latencies.append(time.time() - start_time)
 
-        # Extract retrieved article numbers from metadata
-        retrieved_articles = [str(res.get("article_id", "")) for res in results]
+        # Extract and normalize article numbers from Document metadata
+        retrieved_articles = [
+            extract_article_num(doc.metadata.get("article_number", ""))
+            for doc, score in results
+        ]
 
-        # Calculate Hit Rate@K
-        hit = any(art in retrieved_articles for art in expected)
-        if hit:
+        # Print debug info for the first query to verify matching
+        print(f"\n[DEBUG] Query: {query}")
+        print(f"[DEBUG] Expected Articles:  {expected}")
+        print(f"[DEBUG] Retrieved Articles: {retrieved_articles}")
+
+        # Hit Rate@K
+        if any(art in retrieved_articles for art in expected):
             hits += 1
 
-        # Calculate MRR (Mean Reciprocal Rank)
+        # MRR (Mean Reciprocal Rank)
         rank = 0
         for idx, art in enumerate(retrieved_articles, start=1):
             if art in expected:
@@ -36,14 +65,10 @@ def compute_metrics(eval_dataset: list, pipeline: RAGPipeline, top_k: int = 3):
         mrr_sum += (1.0 / rank) if rank > 0 else 0.0
 
     num_samples = len(eval_dataset)
-    hit_rate = hits / num_samples if num_samples > 0 else 0.0
-    mrr = mrr_sum / num_samples if num_samples > 0 else 0.0
-    avg_latency = float(np.mean(latencies))
-
     return {
-        "hit_rate_at_k": hit_rate,
-        "mrr_at_k": mrr,
-        "avg_latency_sec": avg_latency
+        "hit_rate_at_k": hits / num_samples if num_samples > 0 else 0.0,
+        "mrr_at_k": mrr_sum / num_samples if num_samples > 0 else 0.0,
+        "avg_latency_sec": float(np.mean(latencies))
     }
 
 def run_evaluation():
@@ -54,29 +79,23 @@ def run_evaluation():
     with open(eval_path, "r", encoding="utf-8") as f:
         eval_dataset = json.load(f)
 
-    # Initialize RAG Pipeline
-    pipeline = RAGPipeline()
     top_k = 3
-    embedding_model = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
-    # Set MLflow Experiment
     mlflow.set_experiment("arabic-legal-rag-retrieval")
 
-    with mlflow.start_run(run_name="baseline_minilm_top3"):
-        # Log Hyperparameters
-        mlflow.log_param("embedding_model", embedding_model)
+    with mlflow.start_run(run_name="baseline_minilm_top3_optimized"):
+        mlflow.log_param("embedding_model", model_name)
         mlflow.log_param("top_k", top_k)
         mlflow.log_param("eval_samples_count", len(eval_dataset))
 
-        # Compute Metrics
-        metrics = compute_metrics(eval_dataset, pipeline, top_k=top_k)
+        metrics = compute_metrics(eval_dataset, top_k=top_k)
 
-        # Log Metrics
         mlflow.log_metric("hit_rate_at_k", metrics["hit_rate_at_k"])
         mlflow.log_metric("mrr_at_k", metrics["mrr_at_k"])
         mlflow.log_metric("avg_latency_sec", metrics["avg_latency_sec"])
 
-        print("\n--- Evaluation Results ---")
+        print("\n--- Optimized Evaluation Results ---")
         print(f"Hit Rate@{top_k}: {metrics['hit_rate_at_k']:.4f}")
         print(f"MRR@{top_k}:      {metrics['mrr_at_k']:.4f}")
         print(f"Avg Latency: {metrics['avg_latency_sec']:.4f}s")
