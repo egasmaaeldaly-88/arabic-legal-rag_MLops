@@ -73,10 +73,17 @@ PowerShell
 python -m pytest
 
 ---
+## Quickstart (Run on Any Machine via Docker)
 
-### Command to Create the File Directly in PowerShell
-
-Run this command in your PowerShell terminal to generate the `README.md` file immediately:
+Run the entire Arabic Legal RAG system in 3 commands:
 
 ```powershell
-code README.md
+# 1. Build the portable production container
+docker build -t arabic-legal-rag:v1 .
+
+# 2. Run the application server on port 8000
+docker run -d -p 8000:8000 --name legal_rag_app arabic-legal-rag:v1
+
+# 3. Query the Arabic Legal Q&A API
+curl.exe -X POST "http://localhost:8000/ask" -H "Content-Type: application/json" -d "{\"question\": \"ما هي المسؤولية عن العمل الشخصي؟\"}"
+
