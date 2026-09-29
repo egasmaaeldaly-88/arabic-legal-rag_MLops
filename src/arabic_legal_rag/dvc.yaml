@@ -1,0 +1,27 @@
+stages:
+  export_onnx:
+    cmd: optimum-cli export onnx --model sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2 --task feature-extraction models/onnx/
+    deps:
+      - src/arabic_legal_rag/model.py
+    outs:
+      - models/onnx/
+
+  build_index:
+    cmd: python -m arabic_legal_rag.ingest
+    deps:
+      - data/egyptian_civil_code.pdf
+      - src/arabic_legal_rag/ingest.py
+      - models/onnx/
+    outs:
+      - data/vector_store/
+
+  evaluate:
+    cmd: python -m arabic_legal_rag.eval
+    deps:
+      - data/eval_dataset.json
+      - data/vector_store/
+      - src/arabic_legal_rag/eval.py
+      - src/arabic_legal_rag/api.py
+    metrics:
+      - mlflow_metrics.json:
+          cache: false
