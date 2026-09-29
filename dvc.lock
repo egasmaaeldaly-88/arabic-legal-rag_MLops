@@ -1,0 +1,50 @@
+schema: '2.0'
+stages:
+  export_onnx:
+    cmd: python export_to_onnx.py
+    deps:
+    - path: export_to_onnx.py
+      hash: md5
+      md5: f8a7831602ceb243f26aabd254051433
+      size: 447
+    outs:
+    - path: models/onnx/
+      hash: md5
+      md5: 275bca65ce36634d16414d7811e515b9.dir
+      size: 487721792
+      nfiles: 4
+  build_index:
+    cmd: python src/arabic_legal_rag/ingest.py
+    deps:
+    - path: models/onnx/
+      hash: md5
+      md5: 275bca65ce36634d16414d7811e515b9.dir
+      size: 487721792
+      nfiles: 4
+    - path: src/arabic_legal_rag/ingest.py
+      hash: md5
+      md5: 3c4822fb74d7c99ac6078e5d3d9406b9
+      size: 1597
+    outs:
+    - path: data/vector_store/
+      hash: md5
+      md5: 83c9646384c894fa440ecb4f2edd8101.dir
+      size: 2381791
+      nfiles: 2
+  evaluate:
+    cmd: python -m arabic_legal_rag.eval
+    deps:
+    - path: data/vector_store/
+      hash: md5
+      md5: 83c9646384c894fa440ecb4f2edd8101.dir
+      size: 2381791
+      nfiles: 2
+    - path: src/arabic_legal_rag/eval.py
+      hash: md5
+      md5: 99f1da63ff44cbab489c4a1f893e9cfc
+      size: 4118
+    outs:
+    - path: mlflow.db
+      hash: md5
+      md5: 0ea1bde397a2d13e31ac529a5e116e6f
+      size: 876544
