@@ -1,0 +1,8 @@
+data:
+  json_path: "data/legal_corpus_cleaned.json"
+
+model:
+  embedding_model: "BAAI/bge-m3"
+  top_k: 10
+vector_db:
+  index_dir: "data/vector_store_bgem3"

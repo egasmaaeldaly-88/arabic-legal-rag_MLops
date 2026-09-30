@@ -1,0 +1,23 @@
+stages:
+  export_onnx:
+    cmd: python export_to_onnx.py
+    deps:
+      - export_to_onnx.py
+    outs:
+      - models/onnx/
+
+  build_index:
+    cmd: python src/arabic_legal_rag/ingest.py
+    deps:
+      - src/arabic_legal_rag/ingest.py
+      - models/onnx/
+    outs:
+      - data/vector_store/
+
+  evaluate:
+    cmd: python -m arabic_legal_rag.eval
+    deps:
+      - src/arabic_legal_rag/eval.py
+      - data/vector_store/
+    outs:
+      - mlflow.db
