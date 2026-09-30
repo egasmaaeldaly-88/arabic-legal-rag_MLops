@@ -1,17 +1,35 @@
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
-from arabic_legal_rag.pipeline import run_retrieval
-from arabic_legal_rag.utils import load_config, load_clean_corpus
+from loguru import logger
+import os
+
+# Import our production-ready retriever and config utils
+from src.arabic_legal_rag.retriever import get_legal_retriever
+from src.arabic_legal_rag.utils import load_config, load_clean_corpus
 
 app = FastAPI(
     title="Arabic Legal RAG API",
     description="API for Egyptian Civil Code Q&A and Legal Article Retrieval",
-    version="0.1.0"
+    version="1.0.0"
 )
 
-# Load metadata once at application boot time
+# Load config and corpus size at startup
 _CONFIG = load_config()
 _CORPUS_SIZE = len(load_clean_corpus(_CONFIG["data"]["json_path"]))
+PRODUCTION_INDEX_PATH = "data/vector_store_sz_500_ov_50"
+
+# Global retriever variable
+retriever = None
+
+@app.on_event("startup")
+def startup_event():
+    global retriever
+    logger.info("Initializing production legal retriever...")
+    if not os.path.exists(PRODUCTION_INDEX_PATH):
+        raise RuntimeError(f"Vector store not found at {PRODUCTION_INDEX_PATH}")
+    # Initialize retriever fetching top 3 articles
+    retriever = get_legal_retriever(index_path=PRODUCTION_INDEX_PATH, k=3)
+    logger.info("Retriever successfully loaded!")
 
 
 class QueryRequest(BaseModel):
@@ -30,7 +48,6 @@ class HealthResponse(BaseModel):
 
 @app.get("/health", response_model=HealthResponse)
 def health_check():
-    # Instant response using cached count
     return HealthResponse(
         status="healthy",
         documents_indexed=_CORPUS_SIZE
@@ -39,6 +56,7 @@ def health_check():
 
 @app.post("/ask", response_model=QueryResponse)
 def ask_legal_question(request: QueryRequest):
+    global retriever
     clean_question = request.question.strip()
     if not clean_question:
         raise HTTPException(
@@ -46,22 +64,29 @@ def ask_legal_question(request: QueryRequest):
             detail="Question cannot be empty or consist only of whitespace."
         )
 
-    results = run_retrieval(clean_question)
-    if not results:
-        return QueryResponse(answer="لم يتم العثور على مواد قانونية متعلقة.", sources=[])
+    if not retriever:
+        raise HTTPException(status_code=500, detail="Retriever is not initialized.")
 
-    sources = []
-    contents = []
+    try:
+        docs = retriever.invoke(clean_question)
+        if not docs:
+            return QueryResponse(answer="لم يتم العثور على مواد قانونية متعلقة.", sources=[])
 
-    for doc, score in results:
-        art_num = str(doc.metadata.get("article_number", "")).strip()
-        if art_num:
-            citation = art_num if art_num.startswith("مادة") else f"مادة {art_num}"
-            if citation not in sources:
-                sources.append(citation)
-        contents.append(f"[{art_num}]: {doc.page_content}")
+        sources = []
+        contents = []
 
-    return QueryResponse(
-        answer="\n\n".join(contents),
-        sources=sources
-    )
+        for doc in docs:
+            art_num = str(doc.metadata.get("article_number", "")).strip()
+            if art_num:
+                citation = art_num if art_num.startswith("مادة") else f"مادة {art_num}"
+                if citation not in sources:
+                    sources.append(citation)
+            contents.append(f"[{art_num}]: {doc.page_content}")
+
+        return QueryResponse(
+            answer="\n\n".join(contents),
+            sources=sources
+        )
+    except Exception as e:
+        logger.error(f"Error during retrieval: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

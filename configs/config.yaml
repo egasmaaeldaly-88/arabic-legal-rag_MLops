@@ -1,8 +1,19 @@
+# Data source configuration
 data:
   json_path: "data/legal_corpus_cleaned.json"
 
+# Model and embedding configuration
 model:
   embedding_model: "BAAI/bge-m3"
   top_k: 10
+
+# Vector store configuration
 vector_db:
   index_dir: "data/vector_store_bgem3"
+
+# Experimentation and Hyperparameter tuning configuration
+experimentation:
+  tracking_uri: "sqlite:///mlflow.db"
+  experiment_name: "Arabic_Legal_RAG_Optimization"
+  chunk_sizes: [250, 500, 1000]
+  chunk_overlaps: [25, 50, 100]

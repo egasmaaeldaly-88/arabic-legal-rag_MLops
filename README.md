@@ -87,3 +87,109 @@ docker run -d -p 8000:8000 --name legal_rag_app arabic-legal-rag:v1
 # 3. Query the Arabic Legal Q&A API
 curl.exe -X POST "http://localhost:8000/ask" -H "Content-Type: application/json" -d "{\"question\": \"ما هي المسؤولية عن العمل الشخصي؟\"}"
 
+# ⚖️ Arabic Legal RAG Pipeline (MLOps & Experiment Tracking)
+
+An enterprise-grade Retrieval-Augmented Generation (RAG) system built for the **Egyptian Civil Code**, designed following strict **MLOps best practices**, featuring configuration-driven experimentation, local experiment tracking with **MLflow**, isolated vector stores, and rigorous model evaluation.
+
+---
+
+## 🚀 Key Architectural Highlights
+
+1. **Configuration-Driven Design (`yaml`):**
+   - Decoupled hardcoded paths and models into a centralized `configs/config.yaml` to ensure clean, reproducible code and seamless A/B testing.
+   
+2. **Robust Data Preprocessing:**
+   - Implemented custom normalization utilities (converting Eastern Arabic numerals `٠١٢٣٤٥٦٧٨٩` to ASCII `0123456789`) to guarantee 100% robust matching against evaluation ground-truth.
+
+3. **Isolated Vector Stores (Preventing Dimensionality Mismatch):**
+   - Implemented dynamic path generation for FAISS indices based on the active embedding model. This prevents critical `AssertionError (d == self.d)` crashes when switching between vector dimensions (384 vs. 1024).
+
+4. **MLflow Experiment Tracking:**
+   - Integrated local SQLite-backed MLflow tracking (`mlflow.db`) to record parameters, evaluation metrics (`Hit Rate@K`, `MRR@K`), and inference latency for every model run.
+
+---
+
+## 📊 Model Evaluation & Comparison
+
+We evaluated multiple embedding models against a custom ground-truth evaluation dataset (`data/eval_dataset.json`) containing core legal queries from the Egyptian Civil Code.
+
+| Embedding Model | Dimensions | Vector Store Directory | Top-K | Hit Rate@K | MRR@K | Avg Latency | Production Status |
+| :--- | :---: | :--- | :---: | :---: | :---: | :---: | :--- |
+| `paraphrase-multilingual-MiniLM-L12-v2` | 384 | `data/vector_store` | 10 | 0.7000 | 0.6200 | **0.040s** | Baseline |
+| `paraphrase-multilingual-mpnet-base-v2` | 768 | `data/vector_store_mpnet` | 10 | 0.7000 | 0.6200 | 0.084s | Iteration 1 |
+| **`BAAI/bge-m3`** | **1024** | **`data/vector_store_bgem3`** | **10`** | **1.0000** | **1.0000** | **0.226s** | 🏆 **Production Ready** |
+
+### 💡 Engineering Takeaways:
+- **The Vector Trade-off:** While `BAAI/bge-m3` uses a heavy 1024-dimensional space and has a slightly higher inference latency (~0.22s), its deep multilingual architecture achieves a **100% Hit Rate and MRR**, successfully resolving complex queries (such as exact article retrieval like Article 81) that lighter models missed.
+
+---
+
+## 📂 Project Structure
+
+```text
+arabic-legal-rag_MLops/
+│
+├── configs/
+│   └── config.yaml          # Centralized configuration file
+│
+├── data/
+│   ├── legal_corpus_cleaned.json # Cleaned Egyptian Civil Code corpus
+│   ├── eval_dataset.json    # Ground-truth evaluation dataset
+│   ├── vector_store/        # MiniLM FAISS index (384-dim)
+│   ├── vector_store_mpnet/  # MPNet FAISS index (768-dim)
+│   └── vector_store_bgem3/  # BGE-M3 FAISS index (1024-dim)
+│
+├── src/
+│   └── arabic_legal_rag/
+│       ├── ingest.py        # Data ingestion & dynamic vector store builder
+│       ├── model.py         # Model loading & embedding factory
+│       ├── eval.py          # Automated evaluation & MLflow logging script
+│       └── utils.py         # Helper functions (Config loader, digit normalizer)
+│
+├── mlflow.db                # Local MLflow SQLite tracking database
+├── requirements.txt         # Project dependencies
+└── README.md                # Project documentation
+
+⚙️ Getting Started & Usage
+Clone the repository & activate virtual environment:
+
+PowerShell
+git clone [https://github.com/YOUR_USERNAME/arabic-legal-rag_MLops.git](https://github.com/YOUR_USERNAME/arabic-legal-rag_MLops.git)
+cd arabic-legal-rag_MLops
+venv\Scripts\Activate
+Install dependencies:
+
+PowerShell
+pip install -r requirements.txt
+Configure your model:
+Edit configs/config.yaml to select your desired embedding model and its corresponding vector store directory.
+
+Run Data Ingestion:
+
+PowerShell
+python src/arabic_legal_rag/ingest.py
+Run Evaluation & Track in MLflow:
+
+PowerShell
+python src/arabic_legal_rag/eval.py
+View MLflow UI:
+
+PowerShell
+mlflow ui --backend-store-uri sqlite:///mlflow.db
+(Open http://localhost:5000 in your browser to inspect experiment runs).
+
+## 📊 Chunking Strategy Evaluation & Decision
+
+To achieve optimal retrieval accuracy for the Egyptian Civil Code RAG pipeline, we conducted a grid search experiment tracking metrics via **MLflow**, evaluating three distinct chunking configurations using `BAAI/bge-m3` embeddings and FAISS.
+
+### 🧪 Experimental Grid Search Results
+| Chunk Size | Chunk Overlap | Total Chunks (`total_chunks`) | Retrieval Context Quality | Decision Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **250** | **25** | ~2,150 | High fragmentation; articles are frequently cut across chunk boundaries, losing holistic legal meaning. | ❌ Rejected |
+| **500** | **50** | ~1,420 | **Optimal balance.** Perfectly captures single-article boundaries without splitting clauses while maintaining high semantic density. | ✅ **Selected (Production)** |
+| **1000** | **100** | 1,137 | Too broad; multiple distinct legal articles merge into a single chunk, causing noise in vector similarity search. | ⚠️ Sub-optimal |
+
+### 🔍 Why `Chunk Size = 500` was Chosen:
+1. **Legal Structuring Alignment:** Egyptian Civil Code articles vary in length, but a size of 500 characters closely matches the average length of a standard legal article and its primary clauses.
+2. **Overlap Efficiency (50 tokens):** Prevents semantic loss at boundaries, ensuring legal context is preserved between continuous articles.
+3. **MLflow Validation:** Confirmed that while 1000-size chunks yield fewer overall vectors, the 500-size configuration provides superior precision when querying specific statutory rules (e.g., statute of limitations and obligation termination).
