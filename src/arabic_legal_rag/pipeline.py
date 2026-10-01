@@ -28,14 +28,18 @@ def build_vector_database(config_path: str = "configs/config.yaml"):
     print(f"✅ FAISS index saved successfully at '{config['vector_db']['index_dir']}'")
 
 def run_retrieval(query: str, config_path: str = "configs/config.yaml"):
-    """تشغيل الاسترجاع للمواد القانونية بناءً على الاستعلام"""
+    """تشغيل الاسترجاع للمواد القانونية بناءً على الاستعلام مع تطبيق المعالجة النصية"""
+    from arabic_legal_rag.utils import normalize_arabic
+    
     config = load_config(config_path)
     embeddings = get_embedding_model(config["model"]["embedding_model"])
     vector_store = load_vector_store(config["vector_db"]["index_dir"], embeddings)
 
-    return vector_store.similarity_search_with_score(
-        query, k=config["model"]["top_k"]
-    )
+    # Normalize incoming query for optimal embedding match
+    normalized_query = normalize_arabic(query)
 
+    return vector_store.similarity_search_with_score(
+        normalized_query, k=config["model"]["top_k"]
+    )
 if __name__ == "__main__":
     build_vector_database()
