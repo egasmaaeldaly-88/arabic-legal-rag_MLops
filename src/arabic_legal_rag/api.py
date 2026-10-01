@@ -16,8 +16,7 @@ app = FastAPI(
 # Load config and corpus size at startup
 _CONFIG = load_config()
 _CORPUS_SIZE = len(load_clean_corpus(_CONFIG["data"]["json_path"]))
-PRODUCTION_INDEX_PATH = "data/vector_store_sz_500_ov_50"
-
+PRODUCTION_INDEX_PATH = "data/vector_store_sz_1000_ov_100"
 # Global retriever variable
 retriever = None
 

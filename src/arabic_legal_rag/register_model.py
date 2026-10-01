@@ -40,11 +40,17 @@ def register_best_chunking_config():
     # Log/Tag this run in MLflow as the Production Candidate
     client.set_tag(best_run_id, "mlflow.note.content", "Production-ready best chunking configuration for Arabic Legal RAG.")
     
-    # Optional: Register model artifact if logged
-    # model_uri = f"runs:/{best_run_id}/vector_store_sz_{chunk_size}_ov_{chunk_overlap}"
-    # mlflow.register_model(model_uri, "ArabicLegalRAG_BestChunking")
+    # Dynamically register model artifact in MLflow Model Registry using the best run's parameters
+    model_uri = f"runs:/{best_run_id}/run_info_sz_{chunk_size}_ov_{chunk_overlap}.txt"
+    registered_model_name = "ArabicLegalRAG_BestChunking"
     
-    logger.info("Best configuration successfully processed and tagged for production registry!")
+    try:
+        model_version = mlflow.register_model(model_uri, registered_model_name)
+        logger.info(f"Model successfully registered as version {model_version.version} under name '{registered_model_name}'!")
+    except Exception as e:
+        logger.warning(f"Registration note: {e}")
+    
+    logger.info("Best configuration successfully processed and registered for production registry!")
 
 if __name__ == "__main__":
     register_best_chunking_config()
