@@ -22,9 +22,10 @@ jobs:
     - name: Install uv and dependencies
       run: |
         pip install uv
-        uv pip install --system -e .
-        uv pip install pytest httpx
+        uv venv .venv
+        .venv/bin/uv pip install -e .
+        .venv/bin/uv pip install pytest httpx
 
     - name: Run Tests with Pytest
       run: |
-        python -m pytest -v
+        .venv/bin/python -m pytest -v
