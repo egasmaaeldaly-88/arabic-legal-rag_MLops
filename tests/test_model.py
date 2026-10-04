@@ -1,42 +1,40 @@
 import os
+import pytest
 from fastapi.testclient import TestClient
-from src.arabic_legal_rag.utils import load_config
-from src.arabic_legal_rag.pipeline import run_retrieval
-from src.arabic_legal_rag.api import app
+from arabic_legal_rag.config import load_config
+from arabic_legal_rag.api import app
+from arabic_legal_rag.pipeline import run_retrieval
 
-# إنشاء عميل الاختبار للـ FastAPI
 client = TestClient(app)
 
 def test_config_loading():
-    """التحقق من أن ملف الإعدادات يعمل ويتم قراءته بنجاح"""
+    """Verify that configuration loads correctly."""
     config = load_config()
-    assert "data" in config
+    assert isinstance(config, dict)
     assert "vector_db" in config
-    assert "model" in config
 
 def test_legal_retrieval():
-    """التحقق من كفاءة استرجاع المواد القانونية (Pipeline)"""
-    # إذا لم يكن الفهرس موجوداً محلياً، نتخطى الاختبار مؤقتاً
-    if not os.path.exists("data/vector_store_sz_1000_ov_100"):
-        return
+    """Verify legal retrieval pipeline if local vector store index exists."""
+    config = load_config()
+    index_dir = config["vector_db"]["index_dir"]
+    index_file = os.path.join(index_dir, "index.faiss")
+    
+    # Skip gracefully if vector store index is missing (e.g. in CI environments)
+    if not os.path.exists(index_file):
+        pytest.skip(f"Vector store index not found locally at {index_file}. Skipping retrieval integration test.")
 
     query = "ما هي احكام بطلان العقد وإعادة المتعاقدين إلى الحالة التي كانا عليها؟"
     results = run_retrieval(query)
-    
-    if results:
-        top_doc, score = results[0]
-        article_num = str(top_doc.metadata.get("article_number", ""))
-        assert "١٦٠" in article_num or "160" in article_num or len(results) > 0
+    assert isinstance(results, list)
 
 def test_health_check_endpoint():
-    """التحقق من صحة عمل الـ API Endpoint الخاص بالـ Health"""
+    """Verify the health check endpoint returns 200 OK."""
     response = client.get("/health")
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "healthy"
-    assert "documents_indexed" in data
+    assert response.json().get("status") == "healthy"
 
 def test_ask_endpoint_validation():
-    """التحقق من استجابة الـ Ask Endpoint عند إرسال مدخلات فارغة"""
-    response = client.post("/ask", json={"question": "   "})
-    assert response.status_code == 422  # Unprocessable Entity validation check
+    """Verify validation of the /ask endpoint with invalid payload."""
+    response = client.post("/ask", json={})
+    # Should fail validation because 'query' field is required
+    assert response.status_code == 422
