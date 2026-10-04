@@ -27,13 +27,12 @@ jobs:
       with:
         enable-cache: true
 
-    # 4. Install project package and test dependencies globally using uv speed
+    # 4. Install project and dependencies using uv sync
     - name: Install dependencies with uv
       run: |
-        uv pip install --system -e .
-        uv pip install --system pytest httpx
+        uv sync --all-extras
 
-    # 5. Execute the automated pytest test suite
+    # 5. Execute the automated pytest test suite using uv run
     - name: Run Tests with Pytest
       run: |
-        python -m pytest -v
+        uv run pytest -v
