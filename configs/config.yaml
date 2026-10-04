@@ -4,9 +4,11 @@ data:
 
 model:
   embedding_model: "BAAI/bge-m3"
-  vector_store_path: "vector_stores/faiss_index"
   chunk_size: 1000
   chunk_overlap: 100
+
+vector_db:
+  index_dir: "data/vector_store_bgem3"
 
 retrieval:
   top_k: 5
