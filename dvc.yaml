@@ -12,12 +12,19 @@ stages:
       - src/arabic_legal_rag/ingest.py
       - models/onnx/
     outs:
-      - data/vector_store/
+      - data/vector_store_bgem3/   
 
   evaluate:
     cmd: python -m arabic_legal_rag.eval
     deps:
       - src/arabic_legal_rag/eval.py
-      - data/vector_store/
+      - data/vector_store_bgem3/   
     outs:
       - mlflow.db
+
+  register_best_model:
+    cmd: python src/arabic_legal_rag/register_best_model.py
+    deps:
+      - src/arabic_legal_rag/register_best_model.py
+    outs:
+      - outputs/best_config_registered.flag

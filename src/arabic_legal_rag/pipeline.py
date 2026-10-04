@@ -23,7 +23,8 @@ def build_vector_database(config_path: str = "configs/config.yaml"):
     embeddings = get_embedding_model(config["model"]["embedding_model"])
     vector_store = FAISS.from_documents(documents, embeddings)
 
-    os.makedirs(os.path.dirname(config["vector_db"]["index_dir"]), exist_ok=True)
+    # التعديل الصحيح لضمان إنشاء الفولدر بالكامل
+    os.makedirs(config["vector_db"]["index_dir"], exist_ok=True)
     vector_store.save_local(config["vector_db"]["index_dir"])
     print(f"✅ FAISS index saved successfully at '{config['vector_db']['index_dir']}'")
 
