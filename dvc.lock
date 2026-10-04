@@ -23,28 +23,40 @@ stages:
       nfiles: 4
     - path: src/arabic_legal_rag/ingest.py
       hash: md5
-      md5: 3c4822fb74d7c99ac6078e5d3d9406b9
-      size: 1597
+      md5: a9106af3e9deb71baa3bcde0611b07a2
+      size: 2757
     outs:
-    - path: data/vector_store/
+    - path: data/vector_store_bgem3/
       hash: md5
-      md5: 83c9646384c894fa440ecb4f2edd8101.dir
-      size: 2381791
+      md5: aec8c661fb6ce31b9dfd30ddf4f4641f.dir
+      size: 5552968
       nfiles: 2
   evaluate:
     cmd: python -m arabic_legal_rag.eval
     deps:
-    - path: data/vector_store/
+    - path: data/vector_store_bgem3/
       hash: md5
-      md5: 83c9646384c894fa440ecb4f2edd8101.dir
-      size: 2381791
+      md5: aec8c661fb6ce31b9dfd30ddf4f4641f.dir
+      size: 5552968
       nfiles: 2
     - path: src/arabic_legal_rag/eval.py
       hash: md5
-      md5: 99f1da63ff44cbab489c4a1f893e9cfc
-      size: 4118
+      md5: c966bf8f8e2d0d41ca3576e0f4268ec0
+      size: 4387
     outs:
     - path: mlflow.db
       hash: md5
-      md5: 0ea1bde397a2d13e31ac529a5e116e6f
+      md5: bfd4f67c3d6057faed616f183e5caa1e
       size: 876544
+  register_best_model:
+    cmd: python src/arabic_legal_rag/register_best_model.py
+    deps:
+    - path: src/arabic_legal_rag/register_best_model.py
+      hash: md5
+      md5: ce4a6be0790a3ed948fc60317cc02721
+      size: 1895
+    outs:
+    - path: outputs/best_config_registered.flag
+      hash: md5
+      md5: 8e12feb690e7fa8f9426fdcadf95b656
+      size: 24
