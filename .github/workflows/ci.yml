@@ -11,30 +11,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. Checkout the repository code to the runner
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 2. Set up Python environment version
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: "3.10"
 
-    # 3. Set up Astral uv package manager with caching enabled for faster builds
-    - name: Set up uv
+    - name: Set up Astral uv
       uses: astral-sh/setup-uv@v5
       with:
         enable-cache: true
 
-    # 4. Create virtual environment and install dependencies
     - name: Install dependencies with uv
       run: |
         uv venv
         uv pip install -e .
         uv pip install pytest httpx
 
-    # 5. Execute the automated pytest test suite with explicit PYTHONPATH
     - name: Run Tests with Pytest
       run: |
-        PYTHONPATH=src .venv/bin/pytest -v
+        .venv/bin/pytest -v
