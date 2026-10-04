@@ -27,12 +27,14 @@ jobs:
       with:
         enable-cache: true
 
-    # 4. Install project and dependencies using uv sync
+    # 4. Create virtual environment and install the package in editable mode
     - name: Install dependencies with uv
       run: |
-        uv sync --all-extras
+        uv venv
+        uv pip install -e .
+        uv pip install pytest httpx
 
-    # 5. Execute the automated pytest test suite using uv run
+    # 5. Execute the automated pytest test suite using the virtual environment python
     - name: Run Tests with Pytest
       run: |
-        uv run pytest -v
+        .venv/bin/pytest -v
