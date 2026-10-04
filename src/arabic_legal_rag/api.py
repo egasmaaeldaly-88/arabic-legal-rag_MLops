@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 from loguru import logger
@@ -7,21 +8,14 @@ import os
 from src.arabic_legal_rag.retriever import get_legal_retriever
 from src.arabic_legal_rag.utils import load_config, load_clean_corpus
 
-app = FastAPI(
-    title="Arabic Legal RAG API",
-    description="API for Egyptian Civil Code Q&A and Legal Article Retrieval",
-    version="1.0.0"
-)
-
-# Load config and corpus size at startup
+# Global retriever variable and paths
+retriever = None
+PRODUCTION_INDEX_PATH = "data/vector_store_sz_1000_ov_100"
 _CONFIG = load_config()
 _CORPUS_SIZE = len(load_clean_corpus(_CONFIG["data"]["json_path"]))
-PRODUCTION_INDEX_PATH = "data/vector_store_sz_1000_ov_100"
-# Global retriever variable
-retriever = None
 
-@app.on_event("startup")
-def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     global retriever
     logger.info("Initializing production legal retriever...")
     if not os.path.exists(PRODUCTION_INDEX_PATH):
@@ -29,7 +23,14 @@ def startup_event():
     # Initialize retriever fetching top 3 articles
     retriever = get_legal_retriever(index_path=PRODUCTION_INDEX_PATH, k=3)
     logger.info("Retriever successfully loaded!")
+    yield
 
+app = FastAPI(
+    title="Arabic Legal RAG API",
+    description="API for Egyptian Civil Code Q&A and Legal Article Retrieval",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 class QueryRequest(BaseModel):
     question: str = Field(..., min_length=1, description="Question string cannot be empty")
