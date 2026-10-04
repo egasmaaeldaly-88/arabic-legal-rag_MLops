@@ -3,8 +3,7 @@ from loguru import logger
 import yaml
 
 # Import core functions from model.py to ensure compatibility
-from src.arabic_legal_rag.model import get_embedding_model, load_vector_store
-
+from arabic_legal_rag.model import get_embedding_model, load_vector_store
 def load_config():
     """Load project settings from the configuration file inside configs folder."""
     current_dir = os.path.dirname(os.path.abspath(__file__))

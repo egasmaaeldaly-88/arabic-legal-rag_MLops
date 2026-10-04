@@ -6,7 +6,7 @@ from loguru import logger
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from src.arabic_legal_rag.utils import load_config, load_clean_corpus
+from arabic_legal_rag.utils import load_config, load_clean_corpus
 
 def run_mlflow_experiment():
     # Load configuration

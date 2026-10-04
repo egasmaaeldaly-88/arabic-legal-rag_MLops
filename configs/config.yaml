@@ -1,19 +1,36 @@
-# Data source configuration
-data:
-  json_path: "data/legal_corpus_cleaned.json"
+name: CI/CD Pipeline - Arabic Legal RAG
 
-# Model and embedding configuration
-model:
-  embedding_model: "BAAI/bge-m3"
-  top_k: 10
+on:
+  push:
+    branches: [ "main", "feature/*" ]
+  pull_request:
+    branches: [ "main" ]
 
-# Vector store configuration
-vector_db:
-  index_dir: "data/vector_store_bgem3"
+jobs:
+  test:
+    runs-on: ubuntu-latest
 
-# Experimentation and Hyperparameter tuning configuration
-experimentation:
-  tracking_uri: "sqlite:///mlflow.db"
-  experiment_name: "Arabic_Legal_RAG_Optimization"
-  chunk_sizes: [250, 500, 1000]
-  chunk_overlaps: [25, 50, 100]
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+
+    - name: Set up Astral uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+
+    # Install the package in editable mode along with dev dependencies
+    - name: Install dependencies with uv
+      run: |
+        uv venv
+        uv pip install -e ".[dev]"
+
+    # Run pytest directly using the virtual environment
+    - name: Run Tests with Pytest
+      run: |
+        .venv/bin/pytest -v

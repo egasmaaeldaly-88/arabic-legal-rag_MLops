@@ -2,7 +2,7 @@ import os
 import mlflow
 from mlflow.tracking import MlflowClient
 from loguru import logger
-from src.arabic_legal_rag.utils import load_config
+from arabic_legal_rag.utils import load_config
 
 def register_best_chunking_config():
     config = load_config()

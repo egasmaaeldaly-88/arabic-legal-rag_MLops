@@ -6,7 +6,7 @@ import os
 
 # Import our production-ready retriever and config utils
 from arabic_legal_rag.retriever import get_legal_retriever
-from src.arabic_legal_rag.utils import load_config, load_clean_corpus
+from arabic_legal_rag.utils import load_config, load_clean_corpus
 
 # Global retriever variable and paths
 retriever = None
