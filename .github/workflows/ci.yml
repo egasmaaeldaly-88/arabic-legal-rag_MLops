@@ -11,19 +11,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # 1. Checkout the repository code to the runner
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    # 2. Set up Python environment version
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: "3.10"
 
-    - name: Install uv and sync dependencies
-      run: |
-        pip install uv
-        uv sync --all-extras
+    # 3. Set up Astral uv package manager with caching enabled for faster builds
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
 
+    # 4. Install project package and test dependencies globally using uv speed
+    - name: Install dependencies with uv
+      run: |
+        uv pip install --system -e .
+        uv pip install --system pytest httpx
+
+    # 5. Execute the automated pytest test suite
     - name: Run Tests with Pytest
       run: |
-        uv run pytest -v
+        python -m pytest -v
