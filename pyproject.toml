@@ -24,6 +24,7 @@ dependencies = [
 dev = [
     "pytest>=7.0.0",
     "httpx>=0.24.0",
+    "pytest-cov>=4.0.0",
 ]
 eval = [
     "mlflow>=2.10.0",
@@ -32,3 +33,22 @@ eval = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--cov=src/arabic_legal_rag --cov-report=term-missing --cov-fail-under=70"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+omit = [
+    "src/arabic_legal_rag/build_corpus.py",
+    "src/arabic_legal_rag/eval.py",
+    "src/arabic_legal_rag/evaluate_retrieval.py",
+    "src/arabic_legal_rag/ingest.py",
+    "src/arabic_legal_rag/register_best_model.py",
+    "src/arabic_legal_rag/register_model.py",
+    "src/arabic_legal_rag/validate_corpus.py",
+    "src/arabic_legal_rag/run_experiment.py",
+    "src/arabic_legal_rag/conftest.py",
+]

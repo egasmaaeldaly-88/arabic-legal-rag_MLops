@@ -34,9 +34,10 @@ def run_retrieval(query: str, config_path: str = "configs/config.yaml"):
     embeddings = get_embedding_model(config["model"]["embedding_model"])
     vector_store = load_vector_store(config["vector_db"]["index_dir"], embeddings)
 
+   
     return vector_store.similarity_search_with_score(
-        query, k=config["model"]["top_k"]
+        query, k=config["retrieval"]["top_k"]
     )
-
+    
 if __name__ == "__main__":
     build_vector_database()

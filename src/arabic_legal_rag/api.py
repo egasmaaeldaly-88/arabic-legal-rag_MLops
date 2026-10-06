@@ -1,5 +1,7 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from loguru import logger
 import os
@@ -10,7 +12,7 @@ from arabic_legal_rag.utils import load_config, load_clean_corpus
 
 # Global retriever variable and paths
 retriever = None
-PRODUCTION_INDEX_PATH = "data/vector_store_sz_1000_ov_100"
+PRODUCTION_INDEX_PATH = "data/vector_store_bgem3"
 _CONFIG = load_config()
 _CORPUS_SIZE = len(load_clean_corpus(_CONFIG["data"]["json_path"]))
 
@@ -20,10 +22,13 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing production legal retriever...")
     if not os.path.exists(PRODUCTION_INDEX_PATH):
         raise RuntimeError(f"Vector store not found at {PRODUCTION_INDEX_PATH}")
+    
     # Initialize retriever fetching top 3 articles
     retriever = get_legal_retriever(index_path=PRODUCTION_INDEX_PATH, k=3)
     logger.info("Retriever successfully loaded!")
     yield
+    logger.info("Cleaning up retriever resources...")
+    retriever = None
 
 app = FastAPI(
     title="Arabic Legal RAG API",
@@ -31,6 +36,22 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Exception Handlers for robust error management
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": "Validation error", "errors": exc.errors()},
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unexpected error: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Internal server error. Traceback logged securely."},
+    )
 
 class QueryRequest(BaseModel):
     question: str = Field(..., min_length=1, description="Question string cannot be empty")
@@ -46,11 +67,31 @@ class HealthResponse(BaseModel):
     documents_indexed: int
 
 
+class MetadataResponse(BaseModel):
+    model_name: str
+    embedding_framework: str
+    corpus_size: int
+    vector_store_path: str
+
+
 @app.get("/health", response_model=HealthResponse)
 def health_check():
+    # الشرط الأساسي: يعود بـ 200 فقط لو الـ retriever متحمل في الذاكرة
+    if retriever is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Retriever object not loaded in memory")
     return HealthResponse(
         status="healthy",
         documents_indexed=_CORPUS_SIZE
+    )
+
+
+@app.get("/metadata", response_model=MetadataResponse)
+def get_metadata():
+    return MetadataResponse(
+        model_name="BAAI/bge-m3",
+        embedding_framework="LangChain + FAISS",
+        corpus_size=_CORPUS_SIZE,
+        vector_store_path=PRODUCTION_INDEX_PATH
     )
 
 
@@ -60,12 +101,12 @@ def ask_legal_question(request: QueryRequest):
     clean_question = request.question.strip()
     if not clean_question:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Question cannot be empty or consist only of whitespace."
         )
 
     if not retriever:
-        raise HTTPException(status_code=500, detail="Retriever is not initialized.")
+        raise HTTPException(status_code=503, detail="Retriever is not initialized.")
 
     try:
         docs = retriever.invoke(clean_question)
@@ -90,3 +131,8 @@ def ask_legal_question(request: QueryRequest):
     except Exception as e:
         logger.error(f"Error during retrieval: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/predict", response_model=QueryResponse)
+def predict_legal_question(request: QueryRequest):
+    """مسار إضافي للتنبؤ/الإجابة القانونية لضمان التوافق مع قوالب الـ MLOps والـ Automated Tests"""
+    return ask_legal_question(request)    

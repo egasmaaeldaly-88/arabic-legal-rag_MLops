@@ -1,0 +1,28 @@
+
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: arabic-legal-rag-api:latest
+    container_name: arabic_legal_rag_container
+    user: "1000:1000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data  
+      - ./configs:/app/configs
+    environment:
+      - PORT=8000
+      - PYTHONPATH=/app/src
+      - HF_HOME=/app/data/.cache/huggingface
+      - SENTENCE_TRANSFORMERS_HOME=/app/data/.cache/sentence_transformers
+
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+     

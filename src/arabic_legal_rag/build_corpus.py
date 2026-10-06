@@ -44,6 +44,39 @@ def arabic_to_int(arabic_num_str: str) -> int:
         return int(digits[0])
     return 0
 
+def clean_duplicate_articles(data):
+    """
+    Removes duplicate articles based on article_number, 
+    keeping the record with the most complete text/metadata.
+    """
+    seen_articles = {}
+    
+    for item in data:
+        article_num = item.get("article_number")
+        text = item.get("ar_text") or item.get("text_ar", "")
+        
+        if article_num is None:
+            continue
+            
+        # If the article is already seen, keep the one with longer/richer text
+        if article_num in seen_articles:
+            existing_item = seen_articles[article_num]
+            existing_text = existing_item.get("ar_text") or existing_item.get("text_ar", "")
+            if len(text) > len(existing_text):
+                seen_articles[article_num] = item
+        else:
+            seen_articles[article_num] = item
+            
+    # Convert back to list and sort by article number if possible
+    cleaned_data = list(seen_articles.values())
+    try:
+        cleaned_data.sort(key=lambda x: int(x.get("article_number", 0)))
+    except ValueError:
+        pass
+        
+    print(f"Deduplication complete: Reduced from {len(data)} to {len(cleaned_data)} unique articles.")
+    return cleaned_data
+
 def build_complete_legal_corpus(pdf_path, output_json_path):
     raw_text = ""
     
@@ -98,11 +131,15 @@ def build_complete_legal_corpus(pdf_path, output_json_path):
 
             legal_articles.append(article_record)
 
-    # Export structured JSON
-    with open(output_json_path, "w", encoding="utf-8") as f:
-        json.dump(legal_articles, f, ensure_ascii=False, indent=2)
+    # Step 3: Clean duplicate articles
+    print("Step 3: Removing duplicate articles...")
+    cleaned_articles = clean_duplicate_articles(legal_articles)
 
-    print(f"Step 3: Success! Processed and saved {len(legal_articles)} structured articles to '{output_json_path}'.")
+    # Step 4: Export structured JSON
+    with open(output_json_path, "w", encoding="utf-8") as f:
+        json.dump(cleaned_articles, f, ensure_ascii=False, indent=2)
+
+    print(f"Step 4: Success! Processed and saved {len(cleaned_articles)} unique structured articles to '{output_json_path}'.")
 
 if __name__ == "__main__":
     PDF_INPUT = "data/egyptian_civil_code.pdf"

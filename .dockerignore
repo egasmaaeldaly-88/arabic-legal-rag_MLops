@@ -1,0 +1,11 @@
+.git
+.venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+notebooks/
+data/vector_store_bgem3/  
+tests/
+*.ipynb
+.env
