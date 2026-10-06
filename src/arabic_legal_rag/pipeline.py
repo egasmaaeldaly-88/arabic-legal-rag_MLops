@@ -5,7 +5,7 @@ from arabic_legal_rag.utils import load_config, load_clean_corpus
 from arabic_legal_rag.model import get_embedding_model, load_vector_store
 
 def build_vector_database(config_path: str = "configs/config.yaml"):
-    """قراءة البيانات وبناء الـ FAISS Vector Database والتخزين"""
+    """Load corpus data, build the FAISS vector database, and persist it locally."""
     config = load_config(config_path)
     corpus = load_clean_corpus(config["data"]["json_path"])
 
@@ -19,22 +19,20 @@ def build_vector_database(config_path: str = "configs/config.yaml"):
             )
             documents.append(doc)
 
-    print(f"📖 Loaded {len(documents)} legal articles. Building vector database...")
+    print(f"Loaded {len(documents)} legal articles. Building vector database...")
     embeddings = get_embedding_model(config["model"]["embedding_model"])
     vector_store = FAISS.from_documents(documents, embeddings)
 
-    # التعديل الصحيح لضمان إنشاء الفولدر بالكامل
     os.makedirs(config["vector_db"]["index_dir"], exist_ok=True)
     vector_store.save_local(config["vector_db"]["index_dir"])
-    print(f"✅ FAISS index saved successfully at '{config['vector_db']['index_dir']}'")
+    print(f"FAISS index saved successfully at '{config['vector_db']['index_dir']}'")
 
 def run_retrieval(query: str, config_path: str = "configs/config.yaml"):
-    """تشغيل الاسترجاع للمواد القانونية بناءً على الاستعلام"""
+    """Run vector similarity search to retrieve relevant legal articles based on the query."""
     config = load_config(config_path)
     embeddings = get_embedding_model(config["model"]["embedding_model"])
     vector_store = load_vector_store(config["vector_db"]["index_dir"], embeddings)
 
-   
     return vector_store.similarity_search_with_score(
         query, k=config["retrieval"]["top_k"]
     )

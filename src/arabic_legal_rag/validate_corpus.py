@@ -70,5 +70,11 @@ def validate_legal_corpus(json_path: str = "data/legal_corpus_structured.json"):
     logger.success(f"Validation Passed Successfully! 🎉")
     logger.info(f"Summary -> Total Articles: {len(data)} | Repealed Articles: {repealed_count} | Empty Texts: {empty_text_count}")
 
+    # Create the output flag file required by DVC
+    output_flag = Path("outputs/validation.flag")
+    output_flag.parent.mkdir(parents=True, exist_ok=True)
+    output_flag.write_text("Validation passed successfully!")
+    logger.info("Validation flag file created for DVC.")
+
 if __name__ == "__main__":
     validate_legal_corpus()

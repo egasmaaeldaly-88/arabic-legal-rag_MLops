@@ -19,3 +19,8 @@ def sample_features():
         "question": "ما هي أحكام فسخ العقد في القانون المدني؟"
     }
 
+@pytest.fixture
+def sample_features_en():
+    return {
+        "question": "What are the provisions for contract termination under the Civil Code?"
+    }

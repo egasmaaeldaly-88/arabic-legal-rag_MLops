@@ -4,15 +4,20 @@ data:
 
 model:
   embedding_model: "BAAI/bge-m3"
-  chunk_size: 1000
-  chunk_overlap: 100
-
+  top_k: 3
 vector_db:
   index_dir: "data/vector_store_bgem3"
 
 retrieval:
   top_k: 5
+  supported_languages:
+    - "ar"
+    - "en"
 
 mlflow:
   experiment_name: "arabic_legal_rag_bge_m3"
   tracking_uri: "sqlite:///mlflow.db"
+
+api:
+  host: "127.0.0.1"
+  port: 8000

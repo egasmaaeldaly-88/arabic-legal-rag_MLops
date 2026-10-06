@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from loguru import logger
 import os
+import re
 
 # Import our production-ready retriever and config utils
 from arabic_legal_rag.retriever import get_legal_retriever
@@ -23,7 +24,6 @@ async def lifespan(app: FastAPI):
     if not os.path.exists(PRODUCTION_INDEX_PATH):
         raise RuntimeError(f"Vector store not found at {PRODUCTION_INDEX_PATH}")
     
-    # Initialize retriever fetching top 3 articles
     retriever = get_legal_retriever(index_path=PRODUCTION_INDEX_PATH, k=3)
     logger.info("Retriever successfully loaded!")
     yield
@@ -37,7 +37,6 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Exception Handlers for robust error management
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
@@ -53,19 +52,21 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": "Internal server error. Traceback logged securely."},
     )
 
+def is_arabic(text: str) -> bool:
+    """التحقق مما إذا كان السؤال يحتوي على حروف عربية"""
+    arabic_pattern = re.compile(r'[\u0600-\u06FF]')
+    return bool(arabic_pattern.search(text))
+
 class QueryRequest(BaseModel):
     question: str = Field(..., min_length=1, description="Question string cannot be empty")
-
 
 class QueryResponse(BaseModel):
     answer: str
     sources: list[str]
 
-
 class HealthResponse(BaseModel):
     status: str
     documents_indexed: int
-
 
 class MetadataResponse(BaseModel):
     model_name: str
@@ -73,17 +74,14 @@ class MetadataResponse(BaseModel):
     corpus_size: int
     vector_store_path: str
 
-
 @app.get("/health", response_model=HealthResponse)
 def health_check():
-    # الشرط الأساسي: يعود بـ 200 فقط لو الـ retriever متحمل في الذاكرة
     if retriever is None:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Retriever object not loaded in memory")
     return HealthResponse(
         status="healthy",
         documents_indexed=_CORPUS_SIZE
     )
-
 
 @app.get("/metadata", response_model=MetadataResponse)
 def get_metadata():
@@ -93,7 +91,6 @@ def get_metadata():
         corpus_size=_CORPUS_SIZE,
         vector_store_path=PRODUCTION_INDEX_PATH
     )
-
 
 @app.post("/ask", response_model=QueryResponse)
 def ask_legal_question(request: QueryRequest):
@@ -113,6 +110,9 @@ def ask_legal_question(request: QueryRequest):
         if not docs:
             return QueryResponse(answer="لم يتم العثور على مواد قانونية متعلقة.", sources=[])
 
+        # تحديد لغة المستخدم بناءً على سؤاله
+        user_wants_arabic = is_arabic(clean_question)
+
         sources = []
         contents = []
 
@@ -122,7 +122,14 @@ def ask_legal_question(request: QueryRequest):
                 citation = art_num if art_num.startswith("مادة") else f"مادة {art_num}"
                 if citation not in sources:
                     sources.append(citation)
-            contents.append(f"[{art_num}]: {doc.page_content}")
+            
+            # اختيار اللغة المناسبة للرد بناءً على لغة السؤال
+            if user_wants_arabic:
+                article_text = doc.metadata.get("text_ar", doc.page_content)
+                contents.append(f"[{art_num}]: {article_text}")
+            else:
+                article_text = doc.metadata.get("text_en", doc.page_content)
+                contents.append(f"[Article {art_num}]: {article_text}")
 
         return QueryResponse(
             answer="\n\n".join(contents),
@@ -134,5 +141,4 @@ def ask_legal_question(request: QueryRequest):
     
 @app.post("/predict", response_model=QueryResponse)
 def predict_legal_question(request: QueryRequest):
-    """مسار إضافي للتنبؤ/الإجابة القانونية لضمان التوافق مع قوالب الـ MLOps والـ Automated Tests"""
-    return ask_legal_question(request)    
+    return ask_legal_question(request)

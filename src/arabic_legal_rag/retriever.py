@@ -4,6 +4,7 @@ import yaml
 
 # Import core functions from model.py to ensure compatibility
 from arabic_legal_rag.model import get_embedding_model, load_vector_store
+
 def load_config():
     """Load project settings from the configuration file inside configs folder."""
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -30,7 +31,7 @@ def get_legal_retriever(index_path: str, k: int = 3):
     if not os.path.exists(index_path):
         raise FileNotFoundError(f"Vector store not found at path: {index_path}")
     
-    # 3. Load the saved vector store from today's experiments
+    # 3. Load the saved vector store from experiments
     logger.info(f"Loading FAISS vector store from: {index_path}")
     vector_store = load_vector_store(index_path, embeddings)
 
@@ -43,10 +44,11 @@ def get_legal_retriever(index_path: str, k: int = 3):
     return retriever
 
 if __name__ == "__main__":
-    # The "driving test": select one of today's generated vector stores (e.g., size 500)
-    test_index_path = "data/vector_store_sz_500_ov_50" 
+    # Use the article-based vector store path configured or generated
+    config = load_config()
+    test_index_path = config.get("vector_db", {}).get("index_dir", "data/vector_store_bgem3")
     
-    # A real legal query to test chunk accuracy
+    # A real legal query to test article-based retrieval accuracy
     test_query = "ما هي أحكام التقادم الإسقاطي في العقد؟"
     
     try:
@@ -63,7 +65,7 @@ if __name__ == "__main__":
         print("="*60)
         
         for i, doc in enumerate(relevant_docs, 1):
-            # Extract the article number from Metadata (if stored during ingest)
+            # Extract the article number from Metadata (stored during ingest)
             article_num = doc.metadata.get('article_number', 'Not Specified')
             print(f"\n[Result {i}] Article Number: {article_num}")
             print(f"Content: {doc.page_content}")

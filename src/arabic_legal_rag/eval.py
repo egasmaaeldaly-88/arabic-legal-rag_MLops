@@ -4,10 +4,10 @@ import re
 import os
 import mlflow
 import numpy as np
-import mlflow
 from pathlib import Path
 from arabic_legal_rag.utils import load_config
 from arabic_legal_rag.model import get_embedding_model, load_vector_store
+
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
 
 def normalize_digits(text: str) -> str:
@@ -16,6 +16,7 @@ def normalize_digits(text: str) -> str:
     return text.translate(eastern_to_western)
 
 def extract_article_num(raw_val) -> str:
+    """Extract and normalize the article number from raw metadata."""
     if not raw_val:
         return ""
     # Convert Eastern digits to ASCII digits first
@@ -25,7 +26,8 @@ def extract_article_num(raw_val) -> str:
     return digits[0] if digits else normalized_text.strip()
 
 def compute_metrics(eval_dataset: list, top_k: int = 3):
-    # 1. Load config, embedding model, and FAISS index ONCE to fix latency
+    """Compute retrieval metrics (Hit Rate, MRR, and Latency) against the evaluation dataset."""
+    # Load config, embedding model, and FAISS index ONCE to fix latency
     config = load_config("configs/config.yaml")
     embeddings = get_embedding_model(config["model"]["embedding_model"])
     vector_store = load_vector_store(config["vector_db"]["index_dir"], embeddings)
@@ -64,7 +66,7 @@ def compute_metrics(eval_dataset: list, top_k: int = 3):
             if art in expected:
                 rank = idx
                 break
-        
+            
         mrr_sum += (1.0 / rank) if rank > 0 else 0.0
 
     num_samples = len(eval_dataset)
@@ -75,6 +77,7 @@ def compute_metrics(eval_dataset: list, top_k: int = 3):
     }
 
 def run_evaluation():
+    """Run the complete evaluation workflow and log parameters and metrics to MLflow."""
     mlflow.set_tracking_uri("sqlite:///mlflow.db")
     eval_path = Path("data/eval_dataset.json")
     if not eval_path.exists():
@@ -83,9 +86,9 @@ def run_evaluation():
     with open(eval_path, "r", encoding="utf-8") as f:
         eval_dataset = json.load(f)
 
-    # قراءة الإعدادات من config.yaml مباشرة
+    # Load settings directly from config.yaml
     config = load_config("configs/config.yaml")
-    top_k = config["model"]["top_k"]  # سيقرأ القيمة (3 أو 5) تلقائياً من الـ YAML
+    top_k = config["model"]["top_k"]  # Automatically reads top_k value from YAML
     model_name = config["model"]["embedding_model"]
     
     os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"

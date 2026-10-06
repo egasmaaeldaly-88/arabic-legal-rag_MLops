@@ -5,122 +5,77 @@ import mlflow
 from loguru import logger
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
 from arabic_legal_rag.utils import load_config, load_clean_corpus
 
-def run_mlflow_experiment():
+def build_vector_store_pipeline():
+    """Build the FAISS vector store using structural article-based chunking and log metrics to MLflow."""
     # Load configuration
     config = load_config()
     data_path = config["data"]["json_path"]
     model_name = config["model"]["embedding_model"]
+    index_dir = config["vector_db"]["index_dir"]
+    experiment_name = config.get("mlflow", {}).get("experiment_name", "arabic-legal-rag-retrieval")
     
-    # Define grid search parameters to test
-    grid_params = [
-        {"chunk_size": 250, "chunk_overlap": 25},
-        {"chunk_size": 500, "chunk_overlap": 50},
-        {"chunk_size": 1000, "chunk_overlap": 100},
-    ]
-
-    # Set MLflow experiment name once
-    experiment_name = "Arabic_Legal_RAG_Chunking_Optimization"
+    # Set MLflow experiment name
     mlflow.set_experiment(experiment_name)
     logger.info(f"MLflow Experiment set to: {experiment_name}")
 
-    # Initialize embeddings model once (Singleton approach)
+    # Initialize embeddings model
     embeddings = HuggingFaceEmbeddings(model_name=model_name)
     
-    # Load corpus
+    # Load clean corpus (each item represents a complete legal article)
     corpus = load_clean_corpus(data_path)
+    logger.info(f"Loaded {len(corpus)} legal articles from corpus.")
 
-    # Test queries for model retrieval metrics
-    test_queries = [
-        "ما هي أحكام التزام المدين بتنفيذ الالتزام عينا؟",
-        "ما هي شروط المسؤولية العقدية في القانون المدني؟"
-    ]
+    run_name = f"run_article_based_{model_name.split('/')[-1]}"
 
-    for params in grid_params:
-        chunk_size = params["chunk_size"]
-        chunk_overlap = params["chunk_overlap"]
-        run_name = f"chunk_sz_{chunk_size}_ov_{chunk_overlap}"
+    with mlflow.start_run(run_name=run_name):
+        logger.info(f"=== Starting Article-Based Ingestion Run: {run_name} ===")
+        
+        # 1. Log Parameters
+        mlflow.log_param("embedding_model", model_name)
+        mlflow.log_param("chunking_strategy", "article_based_structural")
+        mlflow.log_param("total_documents", len(corpus))
 
-        # Start MLflow run explicitly under the experiment
-        with mlflow.start_run(run_name=run_name):
-            logger.info(f"=== Starting Run: {run_name} ===")
-            
-            # 1. Log Parameters
-            mlflow.log_param("chunk_size", chunk_size)
-            mlflow.log_param("chunk_overlap", chunk_overlap)
-            mlflow.log_param("embedding_model", model_name)
-            mlflow.log_param("total_documents", len(corpus))
+        # Monitor system performance
+        process = psutil.Process(os.getpid())
+        mem_before = process.memory_info().rss / (1024 * 1024)  # in MB
 
-            # Monitor system performance
-            process = psutil.Process(os.getpid())
-            mem_before = process.memory_info().rss / (1024 * 1024) # in MB
+        start_time = time.time()
 
-            start_time = time.time()
-
-            # 2. Text Splitting
-            text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap,
-                separators=["\n\n", "\n", " ", ""]
+        # 2. Structural Document Creation (One Document per Legal Article)
+        docs = [
+            Document(
+                page_content=item["text"],
+                metadata={
+                    "article_number": str(item.get("article_number", "")),
+                    "chapter": item.get("chapter", ""),
+                    "section": item.get("section", "")
+                }
             )
-            docs = text_splitter.create_documents(
-                texts=[item["text"] for item in corpus],
-                metadatas=[{"article_number": item.get("article_number", "")} for item in corpus]
-            )
+            for item in corpus
+        ]
 
-            # 3. Vector Store Creation & Saving Local Index
-            vector_store = FAISS.from_documents(docs, embeddings)
-            
-            elapsed_time = time.time() - start_time
-            mem_after = process.memory_info().rss / (1024 * 1024) # in MB
-            mem_consumed = mem_after - mem_before
+        # 3. Vector Store Creation & Saving Local Index
+        logger.info("Generating embeddings and building FAISS vector store...")
+        vector_store = FAISS.from_documents(docs, embeddings)
+        
+        elapsed_time = time.time() - start_time
+        mem_after = process.memory_info().rss / (1024 * 1024)  # in MB
+        mem_consumed = mem_after - mem_before
 
-            index_path = f"data/vector_store_sz_{chunk_size}_ov_{chunk_overlap}"
-            vector_store.save_local(index_path)
+        # Save local vector store index directory
+        os.makedirs(index_dir, exist_ok=True)
+        vector_store.save_local(index_dir)
+        logger.info(f"Vector store successfully saved to {index_dir}")
 
-            # 4. Evaluate Retrieval Metrics
-            retriever = vector_store.as_retriever(search_kwargs={"k": 3})
-            retrieval_start = time.time()
-            total_retrieved_docs = 0
-            for q in test_queries:
-                retrieved = retriever.invoke(q)
-                total_retrieved_docs += len(retrieved)
-            avg_retrieval_latency = (time.time() - retrieval_start) / len(test_queries)
+        # 4. Log Metrics
+        mlflow.log_metric("total_articles_indexed", len(docs))
+        mlflow.log_metric("indexing_time_sec", round(elapsed_time, 2))
+        mlflow.log_metric("memory_consumed_mb", round(mem_consumed, 2))
 
-            # 5. Log Metrics
-            mlflow.log_metric("total_chunks", len(docs))
-            mlflow.log_metric("indexing_time_sec", round(elapsed_time, 2))
-            mlflow.log_metric("memory_consumed_mb", round(mem_consumed, 2))
-            mlflow.log_metric("avg_retrieval_latency_sec", round(avg_retrieval_latency, 4))
-            mlflow.log_metric("avg_retrieved_docs_per_query", total_retrieved_docs / len(test_queries))
-
-            # 6. Log Unique Artifacts per Run (with safe cleanup)
-            artifact_file = f"run_info_sz_{chunk_size}_ov_{chunk_overlap}.txt"
-            with open(artifact_file, "w", encoding="utf-8") as f:
-                f.write(
-                    f"Experiment: Arabic Legal RAG Optimization\n"
-                    f"Run Name: {run_name}\n"
-                    f"Chunk Size: {chunk_size}\n"
-                    f"Chunk Overlap: {chunk_overlap}\n"
-                    f"Total Chunks Generated: {len(docs)}\n"
-                    f"Indexing Time (seconds): {round(elapsed_time, 2)}\n"
-                    f"Memory Consumed (MB): {round(mem_consumed, 2)}\n"
-                    f"Vector Index Saved Path: {index_path}\n"
-                )
-            
-            # Log artifact to MLflow
-            mlflow.log_artifact(artifact_file)
-            
-            # Safe local cleanup after logging
-            if os.path.exists(artifact_file):
-                try:
-                    os.remove(artifact_file)
-                except Exception as e:
-                    logger.warning(f"Could not remove temp file: {e}")
-
-            logger.info(f"Successfully finished and logged Run {run_name}")
+        logger.info(f"Successfully finished and logged Article-Based Ingestion Run.")
 
 if __name__ == "__main__":
-    run_mlflow_experiment()
+    build_vector_store_pipeline()

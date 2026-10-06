@@ -5,58 +5,78 @@ stages:
     deps:
     - path: export_to_onnx.py
       hash: md5
-      md5: f8a7831602ceb243f26aabd254051433
-      size: 447
+      md5: dbf5d8a47d8ea5b2b7290127d938251c
+      size: 469
     outs:
     - path: models/onnx/
       hash: md5
-      md5: 275bca65ce36634d16414d7811e515b9.dir
-      size: 487721792
+      md5: 1bd52a0ad9a648f3e82317bfe340f814.dir
+      size: 2288163741
       nfiles: 4
   build_index:
     cmd: python src/arabic_legal_rag/ingest.py
     deps:
+    - path: data/legal_corpus_structured.json
+      hash: md5
+      md5: 2195967ea4ec455a3a01d8df83b973ab
+      size: 1218644
     - path: models/onnx/
       hash: md5
-      md5: 275bca65ce36634d16414d7811e515b9.dir
-      size: 487721792
+      md5: 1bd52a0ad9a648f3e82317bfe340f814.dir
+      size: 2288163741
       nfiles: 4
     - path: src/arabic_legal_rag/ingest.py
       hash: md5
-      md5: a9106af3e9deb71baa3bcde0611b07a2
-      size: 2757
+      md5: 01f8eddc944a1ed778d4b9b8802e5105
+      size: 2815
     outs:
     - path: data/vector_store_bgem3/
       hash: md5
-      md5: aec8c661fb6ce31b9dfd30ddf4f4641f.dir
-      size: 5552968
+      md5: a988f148973783afb819ef73e618d590.dir
+      size: 6446853
       nfiles: 2
   evaluate:
     cmd: python -m arabic_legal_rag.eval
     deps:
     - path: data/vector_store_bgem3/
       hash: md5
-      md5: aec8c661fb6ce31b9dfd30ddf4f4641f.dir
-      size: 5552968
+      md5: a988f148973783afb819ef73e618d590.dir
+      size: 6446853
       nfiles: 2
     - path: src/arabic_legal_rag/eval.py
       hash: md5
-      md5: c966bf8f8e2d0d41ca3576e0f4268ec0
-      size: 4387
+      md5: d6abc5672e7f707be5ff0f32ad12d1ad
+      size: 4587
     outs:
     - path: mlflow.db
       hash: md5
-      md5: bfd4f67c3d6057faed616f183e5caa1e
+      md5: 45127cff92e626180010fefc4b0c29c7
       size: 876544
   register_best_model:
     cmd: python src/arabic_legal_rag/register_best_model.py
     deps:
     - path: src/arabic_legal_rag/register_best_model.py
       hash: md5
-      md5: ce4a6be0790a3ed948fc60317cc02721
-      size: 1895
+      md5: ade04a038837d552d282dc8058d62f65
+      size: 2296
     outs:
     - path: outputs/best_config_registered.flag
       hash: md5
       md5: 8e12feb690e7fa8f9426fdcadf95b656
       size: 24
+  validate_corpus:
+    cmd: python src/arabic_legal_rag/validate_corpus.py
+    deps:
+    - path: data/legal_corpus_structured.json
+      hash: md5
+      md5: 2195967ea4ec455a3a01d8df83b973ab
+      size: 1218644
+    - path: src/arabic_legal_rag/validate_corpus.py
+      hash: md5
+      md5: 367421af7b640506df45665476d36714
+      size: 3559
+    outs:
+    - path: outputs/validation.flag
+      hash: md5
+      md5: 85453173e150860f327ea125eff08474
+      size: 31

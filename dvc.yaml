@@ -1,4 +1,12 @@
 stages:
+  validate_corpus:
+    cmd: python src/arabic_legal_rag/validate_corpus.py
+    deps:
+      - src/arabic_legal_rag/validate_corpus.py
+      - data/legal_corpus_structured.json
+    outs:
+      - outputs/validation.flag
+
   export_onnx:
     cmd: python export_to_onnx.py
     deps:
@@ -10,6 +18,7 @@ stages:
     cmd: python src/arabic_legal_rag/ingest.py
     deps:
       - src/arabic_legal_rag/ingest.py
+      - data/legal_corpus_structured.json
       - models/onnx/
     outs:
       - data/vector_store_bgem3/   
