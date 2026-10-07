@@ -1,9 +1,0 @@
-{
-    "model_family": "Optimal_BGE_M3",
-    "embedding_model": "BAAI/bge-m3",
-    "metrics": {
-        "hit_rate_at_k": 0.85,
-        "mrr_at_k": 0.7333333333333333,
-        "avg_latency_sec": 0.36190850734710694
-    }
-}
