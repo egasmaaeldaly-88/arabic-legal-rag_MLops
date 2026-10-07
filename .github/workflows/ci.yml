@@ -29,6 +29,10 @@ jobs:
         uv venv
         uv pip install -e .[dev]
 
+    - name: Run DVC Pipeline
+      run: |
+        uv run dvc repro
+
     - name: Run Tests with Pytest
       run: |
         PYTHONPATH=src .venv/bin/pytest -v

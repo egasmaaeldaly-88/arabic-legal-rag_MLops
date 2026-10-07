@@ -1,0 +1,10 @@
+{
+    "model": "BAAI/bge-m3",
+    "top_k": 3,
+    "eval_samples_count": 20,
+    "metrics": {
+        "hit_rate_at_k": 0.85,
+        "mrr_at_k": 0.7333333333333333,
+        "avg_latency_sec": 0.344615113735199
+    }
+}

@@ -21,13 +21,32 @@ stages:
       - data/legal_corpus_structured.json
       - models/onnx/
     outs:
-      - data/vector_store_bgem3/   
+      - data/vector_store_bgem3/  
+
+  train_model_families:
+      cmd: python -m src.arabic_legal_rag.train_families
+      deps:
+        - src/arabic_legal_rag/train_families.py
+        - data/eval_dataset.json
+        - data/vector_store_bgem3/
+      outs:
+        - outputs/evaluation_report_Baseline_MiniLM.json
+        - outputs/evaluation_report_Alternative_Model.json
+        - outputs/evaluation_report_Optimal_BGE_M3.json
+
+  optuna_sweep:
+    cmd: python -m src.arabic_legal_rag.optuna_sweep
+    deps:
+      - src/arabic_legal_rag/optuna_sweep.py
+      - data/eval_dataset.json
+    outs:
+      - outputs/optuna_best_params.json  # (أو يمكنك تعديل الناتج حسب اسم ملف تقرير الأوبتونا لديكِ)
 
   evaluate:
     cmd: python -m arabic_legal_rag.eval
     deps:
       - src/arabic_legal_rag/eval.py
-      - data/vector_store_bgem3/   
+      - data/vector_store_bgem3/  
     outs:
       - mlflow.db
 

@@ -45,13 +45,13 @@ stages:
       nfiles: 2
     - path: src/arabic_legal_rag/eval.py
       hash: md5
-      md5: d6abc5672e7f707be5ff0f32ad12d1ad
-      size: 4587
+      md5: 15b198153585cb4842479826d18e54b9
+      size: 6210
     outs:
     - path: mlflow.db
       hash: md5
-      md5: 45127cff92e626180010fefc4b0c29c7
-      size: 876544
+      md5: d9ec4d8fe74117d434961e9c7c42f5ea
+      size: 1249280
   register_best_model:
     cmd: python src/arabic_legal_rag/register_best_model.py
     deps:
@@ -80,3 +80,48 @@ stages:
       hash: md5
       md5: 85453173e150860f327ea125eff08474
       size: 31
+  train_model_families:
+    cmd: python -m src.arabic_legal_rag.train_families
+    deps:
+    - path: data/eval_dataset.json
+      hash: md5
+      md5: 3da98b1d535ff48ea130691477d5dc2b
+      size: 3693
+    - path: data/vector_store_bgem3/
+      hash: md5
+      md5: a988f148973783afb819ef73e618d590.dir
+      size: 6446853
+      nfiles: 2
+    - path: src/arabic_legal_rag/train_families.py
+      hash: md5
+      md5: fb60c8726de86d4ad75919cbd7d124f6
+      size: 3990
+    outs:
+    - path: outputs/evaluation_report_Alternative_Model.json
+      hash: md5
+      md5: 7978ce1f862f4457610a58d4bdfa49bd
+      size: 257
+    - path: outputs/evaluation_report_Baseline_MiniLM.json
+      hash: md5
+      md5: dc41c425b2692c31756e5f0dfdbe93c2
+      size: 276
+    - path: outputs/evaluation_report_Optimal_BGE_M3.json
+      hash: md5
+      md5: e62732524c9adb1e4e3f531ee51cd99a
+      size: 228
+  optuna_sweep:
+    cmd: python -m src.arabic_legal_rag.optuna_sweep
+    deps:
+    - path: data/eval_dataset.json
+      hash: md5
+      md5: 3da98b1d535ff48ea130691477d5dc2b
+      size: 3693
+    - path: src/arabic_legal_rag/optuna_sweep.py
+      hash: md5
+      md5: 14dd063caaaad2c2fb132926a975d21e
+      size: 3044
+    outs:
+    - path: outputs/optuna_best_params.json
+      hash: md5
+      md5: 2536cb12af46d459b5d78c4fca9342a6
+      size: 20
