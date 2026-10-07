@@ -26,6 +26,7 @@ dev = [
     "httpx>=0.24.0",
     "pytest-cov>=4.0.0",
     "dvc>=3.0.0",
+    "optuna>=3.0.0",
 ]
 eval = [
     "mlflow>=2.10.0",
