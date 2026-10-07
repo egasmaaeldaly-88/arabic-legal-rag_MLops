@@ -53,4 +53,10 @@ omit = [
     "src/arabic_legal_rag/validate_corpus.py",
     "src/arabic_legal_rag/run_experiment.py",
     "src/arabic_legal_rag/conftest.py",
+    "src/arabic_legal_rag/optuna_sweep.py",
+    "src/arabic_legal_rag/train_families.py",
+    "src/arabic_legal_rag/pipeline.py"
 ]
+
+[tool.coverage.report]
+fail_under = 45
