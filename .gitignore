@@ -2,7 +2,7 @@
 vector_db/
 data/vector_store/
 data/vector_store_mpnet/
-data/vector_store_bgem3/
+
 mlflow.db
 mlruns/
 models/
