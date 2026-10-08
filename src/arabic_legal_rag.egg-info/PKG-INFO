@@ -1,0 +1,223 @@
+Metadata-Version: 2.4
+Name: arabic-legal-rag
+Version: 0.1.0
+Summary: Production-grade Arabic Legal RAG System for Egyptian Civil Code
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: faiss-cpu>=1.7.4
+Requires-Dist: langchain-core>=0.1.0
+Requires-Dist: langchain-community<0.4.0
+Requires-Dist: langchain-huggingface>=0.0.1
+Requires-Dist: sentence-transformers>=2.5.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: mlflow>=2.0.0
+Requires-Dist: loguru>=0.7.3
+Requires-Dist: psutil>=7.2.2
+Requires-Dist: datasets>=5.0.1
+Requires-Dist: ragas>=0.4.3
+Requires-Dist: langchain-google-vertexai>=3.2.4
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: httpx>=0.24.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: dvc>=3.0.0; extra == "dev"
+Requires-Dist: optuna>=3.0.0; extra == "dev"
+Provides-Extra: eval
+Requires-Dist: mlflow>=2.10.0; extra == "eval"
+Requires-Dist: ragas>=0.1.0; extra == "eval"
+
+# arabic-legal-rag_MLops
+# ⚖️ Arabic Legal RAG System
+
+A production-grade Retrieval-Augmented Generation (RAG) system engineered for querying and searching the **Egyptian Civil Code** using dense vector embeddings and FAISS similarity search.
+
+---
+
+## 📁 Repository Structure
+
+```text
+arabic-legal-rag/
+├── configs/
+│   └── config.yaml              # Global configuration (paths, models, k-neighbors)
+├── data/
+│   └── legal_corpus_cleaned.json# Cleaned Egyptian Civil Code dataset
+├── src/
+│   └── arabic_legal_rag/        # Core package source code
+│       ├── __init__.py          # Public API exports
+│       ├── model.py             # Embedding and vector store loaders
+│       ├── pipeline.py          # Database ingestion and retrieval orchestration
+│       └── utils.py             # Config & dataset loading helpers
+├── tests/
+│   └── test_model.py            # Automated integration and retrieval tests
+├── vector_db/
+│   └── faiss_legal_index/       # Generated FAISS vector index files
+├── pyproject.toml               # Package metadata and dependencies
+└── README.md
+
+🛠️ Tech Stack
+Python 3.10+
+
+Package Manager: uv
+
+Vector Database: FAISS (faiss-cpu)
+
+Embeddings Model: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+
+Framework: LangChain
+
+Testing: pytest
+
+🚀 Getting Started
+1. Environment Setup
+Clone the repository and activate your environment:
+PowerShell
+# Activate your environment
+conda activate arabic_rag
+2. Package Installation
+Install the package in editable mode with development dependencies using uv:
+
+PowerShell
+uv pip install -e ".[dev]"
+💻 Usage
+Build the FAISS Vector Database
+To process the Egyptian Civil Code dataset and construct the local vector index:
+
+PowerShell
+python -m arabic_legal_rag.pipeline
+Run Vector Retrieval in Python
+Python
+from arabic_legal_rag import run_retrieval
+
+query = "ما هي احكام بطلان العقد وإعادة المتعاقدين إلى الحالة التي كانا عليها؟"
+results = run_retrieval(query)
+
+for doc, score in results:
+    print(f"Article: {doc.metadata.get('article_number')}")
+    print(f"Content: {doc.page_content}\n")
+🧪 Running Tests
+Execute the test suite using pytest:
+
+PowerShell
+python -m pytest
+
+---
+## Quickstart (Run on Any Machine via Docker)
+
+Run the entire Arabic Legal RAG system in 3 commands:
+
+```powershell
+# 1. Build the portable production container
+docker build -t arabic-legal-rag:v1 .
+
+# 2. Run the application server on port 8000
+docker run -d -p 8000:8000 --name legal_rag_app arabic-legal-rag:v1
+
+# 3. Query the Arabic Legal Q&A API
+curl.exe -X POST "http://localhost:8000/ask" -H "Content-Type: application/json" -d "{\"question\": \"ما هي المسؤولية عن العمل الشخصي؟\"}"
+
+# ⚖️ Arabic Legal RAG Pipeline (MLOps & Experiment Tracking)
+
+An enterprise-grade Retrieval-Augmented Generation (RAG) system built for the **Egyptian Civil Code**, designed following strict **MLOps best practices**, featuring configuration-driven experimentation, local experiment tracking with **MLflow**, isolated vector stores, and rigorous model evaluation.
+
+---
+
+## 🚀 Key Architectural Highlights
+
+1. **Configuration-Driven Design (`yaml`):**
+   - Decoupled hardcoded paths and models into a centralized `configs/config.yaml` to ensure clean, reproducible code and seamless A/B testing.
+   
+2. **Robust Data Preprocessing:**
+   - Implemented custom normalization utilities (converting Eastern Arabic numerals `٠١٢٣٤٥٦٧٨٩` to ASCII `0123456789`) to guarantee 100% robust matching against evaluation ground-truth.
+
+3. **Isolated Vector Stores (Preventing Dimensionality Mismatch):**
+   - Implemented dynamic path generation for FAISS indices based on the active embedding model. This prevents critical `AssertionError (d == self.d)` crashes when switching between vector dimensions (384 vs. 1024).
+
+4. **MLflow Experiment Tracking:**
+   - Integrated local SQLite-backed MLflow tracking (`mlflow.db`) to record parameters, evaluation metrics (`Hit Rate@K`, `MRR@K`), and inference latency for every model run.
+
+---
+
+## 📊 Model Evaluation & Comparison
+
+We evaluated multiple embedding models against a custom ground-truth evaluation dataset (`data/eval_dataset.json`) containing core legal queries from the Egyptian Civil Code.
+
+| Embedding Model | Dimensions | Vector Store Directory | Top-K | Hit Rate@K | MRR@K | Avg Latency | Production Status |
+| :--- | :---: | :--- | :---: | :---: | :---: | :---: | :--- |
+| `paraphrase-multilingual-MiniLM-L12-v2` | 384 | `data/vector_store` | 10 | 0.7000 | 0.6200 | **0.040s** | Baseline |
+| `paraphrase-multilingual-mpnet-base-v2` | 768 | `data/vector_store_mpnet` | 10 | 0.7000 | 0.6200 | 0.084s | Iteration 1 |
+| **`BAAI/bge-m3`** | **1024** | **`data/vector_store_bgem3`** | **10`** | **1.0000** | **1.0000** | **0.226s** | 🏆 **Production Ready** |
+
+### 💡 Engineering Takeaways:
+- **The Vector Trade-off:** While `BAAI/bge-m3` uses a heavy 1024-dimensional space and has a slightly higher inference latency (~0.22s), its deep multilingual architecture achieves a **100% Hit Rate and MRR**, successfully resolving complex queries (such as exact article retrieval like Article 81) that lighter models missed.
+
+---
+
+## 📂 Project Structure
+
+```text
+arabic-legal-rag_MLops/
+│
+├── configs/
+│   └── config.yaml          # Centralized configuration file
+│
+├── data/
+│   ├── legal_corpus_cleaned.json # Cleaned Egyptian Civil Code corpus
+│   ├── eval_dataset.json    # Ground-truth evaluation dataset
+│   ├── vector_store/        # MiniLM FAISS index (384-dim)
+│   ├── vector_store_mpnet/  # MPNet FAISS index (768-dim)
+│   └── vector_store_bgem3/  # BGE-M3 FAISS index (1024-dim)
+│
+├── src/
+│   └── arabic_legal_rag/
+│       ├── ingest.py        # Data ingestion & dynamic vector store builder
+│       ├── model.py         # Model loading & embedding factory
+│       ├── eval.py          # Automated evaluation & MLflow logging script
+│       └── utils.py         # Helper functions (Config loader, digit normalizer)
+│
+├── mlflow.db                # Local MLflow SQLite tracking database
+├── requirements.txt         # Project dependencies
+└── README.md                # Project documentation
+
+⚙️ Getting Started & Usage
+Clone the repository & activate virtual environment:
+
+PowerShell
+git clone [https://github.com/YOUR_USERNAME/arabic-legal-rag_MLops.git](https://github.com/YOUR_USERNAME/arabic-legal-rag_MLops.git)
+cd arabic-legal-rag_MLops
+venv\Scripts\Activate
+Install dependencies:
+
+PowerShell
+pip install -r requirements.txt
+Configure your model:
+Edit configs/config.yaml to select your desired embedding model and its corresponding vector store directory.
+
+Run Data Ingestion:
+
+PowerShell
+python src/arabic_legal_rag/ingest.py
+Run Evaluation & Track in MLflow:
+
+PowerShell
+python src/arabic_legal_rag/eval.py
+View MLflow UI:
+
+PowerShell
+mlflow ui --backend-store-uri sqlite:///mlflow.db
+(Open http://localhost:5000 in your browser to inspect experiment runs).
+
+## 📊 Chunking Strategy Evaluation & Decision
+
+To achieve optimal retrieval accuracy for the Egyptian Civil Code RAG pipeline, we conducted a grid search experiment tracking metrics via **MLflow**, evaluating three distinct chunking configurations using `BAAI/bge-m3` embeddings and FAISS.
+
+### 🧪 Experimental Grid Search Results
+| Chunk Size | Chunk Overlap | Total Chunks (`total_chunks`) | Retrieval Context Quality | Decision Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **250** | **25** | ~2,150 | High fragmentation; articles are frequently cut across chunk boundaries, losing holistic legal meaning. | ❌ Rejected |
+| **500** | **50** | ~1,420 | **Optimal balance.** Perfectly captures single-article boundaries without splitting clauses while maintaining high semantic density. | ✅ **Selected (Production)** |
+| **1000** | **100** | 1,137 | Too broad; multiple distinct legal articles merge into a single chunk, causing noise in vector similarity search. | ⚠️ Sub-optimal |
+
+### 🔍 Why `Chunk Size = 500` was Chosen:
+1. **Legal Structuring Alignment:** Egyptian Civil Code articles vary in length, but a size of 500 characters closely matches the average length of a standard legal article and its primary clauses.
+2. **Overlap Efficiency (50 tokens):** Prevents semantic loss at boundaries, ensuring legal context is preserved between continuous articles.
+3. **MLflow Validation:** Confirmed that while 1000-size chunks yield fewer overall vectors, the 500-size configuration provides superior precision when querying specific statutory rules (e.g., statute of limitations and obligation termination).
