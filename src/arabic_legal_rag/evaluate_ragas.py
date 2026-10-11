@@ -134,7 +134,9 @@ def collect_rows(questions, retriever, generator, article_texts, cache_path: Pat
 
         rows["user_input"].append(question)
         rows["response"].append(answer)
-        rows["retrieved_contexts"].append([it["text"] for it in items] or [""])
+        rows["retrieved_contexts"].append(
+            [f"[{it['article']}]: {it['text']}" for it in items] or [""]
+        )
         rows["reference"].append(build_reference(q, article_texts))
     return rows
 

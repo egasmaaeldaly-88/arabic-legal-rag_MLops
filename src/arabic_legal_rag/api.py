@@ -18,7 +18,9 @@ retriever = None
 generator = None
 PRODUCTION_INDEX_PATH = "data/vector_store_bgem3"
 _CONFIG = load_config()
-_CORPUS_SIZE = len(load_clean_corpus(_CONFIG["data"]["json_path"]))
+_CORPUS_SIZE = sum(
+    1 for r in load_clean_corpus(_CONFIG["data"]["json_path"]) if not r.get("is_stub")
+)  # repealed placeholders are not indexed
 
 
 def get_generator():

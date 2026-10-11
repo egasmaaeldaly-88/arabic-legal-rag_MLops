@@ -72,7 +72,7 @@ def test_collect_rows_caches_answers(tmp_path):
     rows = collect_rows(qs, retriever, gen, {}, cache)
     rows2 = collect_rows(qs, retriever, gen, {}, cache)
     assert gen.calls == 1 and rows["response"] == rows2["response"] == ["إجابة"]
-    assert rows["retrieved_contexts"] == [["نص"]]
+    assert rows["retrieved_contexts"] == [["[1]: نص"]]
 
 
 def test_collect_rows_no_documents_skips_generation(tmp_path):

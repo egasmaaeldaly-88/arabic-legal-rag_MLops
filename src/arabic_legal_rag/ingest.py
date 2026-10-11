@@ -16,6 +16,8 @@ def process_corpus(json_path: str = "data/legal_corpus_structured.json") -> list
 
     documents = []
     for item in data:
+        if item.get("is_stub"):  # repealed-range placeholder: not searchable content
+            continue
         article_text_ar = item.get("text_ar", "")
         article_text_en = item.get("text_en", "")
         article_num = item.get("article_number", 0)

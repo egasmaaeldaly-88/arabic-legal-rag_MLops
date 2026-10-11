@@ -9,3 +9,7 @@ models/
 outputs/
 *.egg-info/
 __pycache__/
+
+reports/ragas_results.csv
+reports/ragas_summary.json
+outputs/
