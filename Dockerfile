@@ -1,55 +1,59 @@
-﻿# ==========================================
-# Stage 1: Builder Stage
+# ==========================================
+# Stage 1: Builder (virtualenv, CPU-only torch)
 # ==========================================
 FROM python:3.10-slim AS builder
 
 WORKDIR /build
 
-# Install essential system build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
+# A virtualenv lets pip see that torch is already installed, so the later install
+# does not pull multi-GB CUDA wheels. No apt-get: every dependency ships wheels.
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-# Upgrade pip and install dependencies into a temporary prefix directory (/install)
 RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir \
+    faiss-cpu sentence-transformers fastapi uvicorn pydantic pyyaml httpx \
+    langchain-community langchain-core langchain-huggingface loguru
 
-# Install CPU PyTorch
-RUN pip install --no-cache-dir --prefix=/install torch --index-url https://download.pytorch.org/whl/cpu
-
-# Install ML and API dependencies
-RUN pip install --no-cache-dir --prefix=/install faiss-cpu sentence-transformers fastapi uvicorn pydantic pyyaml pytest httpx langchain-community langchain-core loguru langchain-huggingface
-
-# Pre-download the embedding model into the build cache
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
+# Pre-download the embedding model into /build/hf
+RUN HF_HOME=/build/hf \
+    python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
 
 
 # ==========================================
-# Stage 2: Runtime Stage (Clean & Secure)
+# Stage 2: Runtime
 # ==========================================
 FROM python:3.10-slim AS runtime
 
-# Create a non-root user (appuser) with UID 1000 for security compliance
 RUN useradd --create-home --uid 1000 appuser
 
-# Copy installed Python packages from the builder stage
-COPY --from=builder /install /usr/local
+COPY --from=builder /opt/venv /opt/venv
 
 WORKDIR /app
 
-# Copy project files and assign ownership to appuser
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONPATH=/app/src \
+    PYTHONUNBUFFERED=1 \
+    HF_HOME=/home/appuser/.cache/huggingface
+
+# Embedding model baked into the image, so the first start does not re-download it
+COPY --from=builder --chown=appuser:appuser /build/hf /home/appuser/.cache/huggingface
+
 COPY --chown=appuser:appuser pyproject.toml .
 COPY --chown=appuser:appuser configs/ configs/
 COPY --chown=appuser:appuser src/ src/
 
-# Switch to the non-root user
-USER appuser
+# Corpus + vector store baked into the image (CI builds the index before this step)
+COPY --chown=appuser:appuser data/legal_corpus_structured.json data/legal_corpus_structured.json
+COPY --chown=appuser:appuser data/vector_store_bgem3/ data/vector_store_bgem3/
 
-# Set PYTHONPATH to locate the arabic_legal_rag package cleanly
-ENV PYTHONPATH=/app/src
+USER appuser
 
 EXPOSE 8000
 
-# Add container health check for automated monitoring
-HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+# start-period: loading the embedding model and the generator takes a while
+HEALTHCHECK --interval=30s --timeout=5s --start-period=180s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
 
-# Run the FastAPI application using Uvicorn
 CMD ["uvicorn", "arabic_legal_rag.api:app", "--host", "0.0.0.0", "--port", "8000"]

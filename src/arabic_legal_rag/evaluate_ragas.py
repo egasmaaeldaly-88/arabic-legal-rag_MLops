@@ -21,6 +21,10 @@ Judge (any OpenAI-compatible API; defaults to Groq's free tier):
     JUDGE_MODEL      default openai/gpt-oss-120b
     JUDGE_API_KEY    falls back to GROQ_API_KEY
     JUDGE_EXTRA_BODY optional JSON merged into the request, e.g. '{"reasoning_format":"hidden"}'
+    JUDGE_MAX_TOKENS cap on judge output tokens per request (default 800). Keep it below your
+                     provider's output-tokens-per-minute (OTPM) limit, or every request is
+                     rejected with HTTP 429 no matter how long you wait.
+    JUDGE_MAX_WORKERS parallel judge requests (default 1; raise only with a higher quota)
 
 Generated answers are cached in outputs/ragas_answers.json so a crash or a
 rate-limit stop never loses work. The cache key includes the retrieved context,
@@ -162,6 +166,7 @@ def run_ragas(rows: dict, metric_choice: str, embeddings):
         api_key=api_key,
         temperature=0,
         max_retries=6,
+        max_tokens=int(os.getenv("JUDGE_MAX_TOKENS", "800")),
         extra_body=json.loads(os.getenv("JUDGE_EXTRA_BODY") or "{}") or None,
     )
     eval_llm = LangchainLLMWrapper(judge)
@@ -180,7 +185,9 @@ def run_ragas(rows: dict, metric_choice: str, embeddings):
         metrics=metrics,
         llm=eval_llm,
         embeddings=LangchainEmbeddingsWrapper(embeddings),
-        run_config=RunConfig(max_workers=2, timeout=240, max_retries=6),
+        run_config=RunConfig(
+            max_workers=int(os.getenv("JUDGE_MAX_WORKERS", "1")), timeout=240, max_retries=10
+        ),
     )
     return result.to_pandas()
 
