@@ -1,9 +1,10 @@
-import os
-import mlflow
-from mlflow.tracking import MlflowClient
-from loguru import logger
 from pathlib import Path
+
+from loguru import logger
+from mlflow.tracking import MlflowClient
+
 from arabic_legal_rag.utils import load_config
+
 
 def register_best_chunking_config():
     """Identify the best-performing article-based retrieval run in MLflow, tag it, and create a DVC flag file."""

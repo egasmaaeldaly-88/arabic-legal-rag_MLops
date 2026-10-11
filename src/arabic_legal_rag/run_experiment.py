@@ -1,12 +1,15 @@
 import os
 import time
-import psutil
+
 import mlflow
-from loguru import logger
+import psutil
 from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.documents import Document
-from arabic_legal_rag.utils import load_config, load_clean_corpus
+from langchain_huggingface import HuggingFaceEmbeddings
+from loguru import logger
+
+from arabic_legal_rag.utils import load_clean_corpus, load_config
+
 
 def build_vector_store_pipeline():
     """Build the FAISS vector store using structural article-based chunking and log metrics to MLflow."""
@@ -75,7 +78,7 @@ def build_vector_store_pipeline():
         mlflow.log_metric("indexing_time_sec", round(elapsed_time, 2))
         mlflow.log_metric("memory_consumed_mb", round(mem_consumed, 2))
 
-        logger.info(f"Successfully finished and logged Article-Based Ingestion Run.")
+        logger.info("Successfully finished and logged Article-Based Ingestion Run.")
 
 if __name__ == "__main__":
     build_vector_store_pipeline()

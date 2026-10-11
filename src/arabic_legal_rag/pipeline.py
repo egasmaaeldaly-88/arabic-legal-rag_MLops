@@ -1,8 +1,11 @@
 import os
-from langchain_core.documents import Document
+
 from langchain_community.vectorstores import FAISS
-from arabic_legal_rag.utils import load_config, load_clean_corpus
+from langchain_core.documents import Document
+
 from arabic_legal_rag.model import get_embedding_model, load_vector_store
+from arabic_legal_rag.utils import load_clean_corpus, load_config
+
 
 def build_vector_database(config_path: str = "configs/config.yaml"):
     """Load corpus data, build the FAISS vector database, and persist it locally."""

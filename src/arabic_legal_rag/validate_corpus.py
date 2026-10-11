@@ -1,7 +1,9 @@
 import json
-from pathlib import Path
 from collections import defaultdict
+from pathlib import Path
+
 from loguru import logger
+
 
 def validate_legal_corpus(json_path: str = "data/legal_corpus_structured.json"):
     """
@@ -67,7 +69,7 @@ def validate_legal_corpus(json_path: str = "data/legal_corpus_structured.json"):
             print(f"Article {num} appears {len(occurrences)} times in:")
             for occ in occurrences:
                 print(f"  - Book: '{occ['book']}' | Chapter: '{occ['chapter']}' (Index: {occ['index']})")
-    logger.success(f"Validation Passed Successfully! 🎉")
+    logger.success("Validation Passed Successfully! 🎉")
     logger.info(f"Summary -> Total Articles: {len(data)} | Repealed Articles: {repealed_count} | Empty Texts: {empty_text_count}")
 
     # Create the output flag file required by DVC

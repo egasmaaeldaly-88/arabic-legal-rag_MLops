@@ -1,7 +1,7 @@
 from arabic_legal_rag.build_corpus import (
     clean_arabic_line,
-    fix_ligature_chars,
     find_repealed_ranges,
+    fix_ligature_chars,
     format_missing,
     split_article_blocks,
     split_page,

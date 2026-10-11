@@ -153,7 +153,12 @@ def run_ragas(rows: dict, metric_choice: str, embeddings):
     from ragas import evaluate
     from ragas.embeddings import LangchainEmbeddingsWrapper
     from ragas.llms import LangchainLLMWrapper
-    from ragas.metrics import answer_relevancy, context_precision, context_recall, faithfulness
+    from ragas.metrics import (
+        answer_relevancy,
+        context_precision,
+        context_recall,
+        faithfulness,
+    )
     from ragas.run_config import RunConfig
 
     api_key = os.getenv("JUDGE_API_KEY") or os.getenv("GROQ_API_KEY")

@@ -1,5 +1,7 @@
 from unittest.mock import patch
+
 from fastapi.testclient import TestClient
+
 from arabic_legal_rag.api import app
 
 client = TestClient(app)

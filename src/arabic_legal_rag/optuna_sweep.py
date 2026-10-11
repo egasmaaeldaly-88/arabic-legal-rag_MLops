@@ -1,20 +1,18 @@
 import json
-import os
-import time
 from pathlib import Path
-import mlflow
-import numpy as np
-import optuna
-from arabic_legal_rag.eval import compute_metrics, normalize_digits, extract_article_num
-from arabic_legal_rag.utils import load_config
 
+import mlflow
+import optuna
+
+from arabic_legal_rag.eval import compute_metrics
+from arabic_legal_rag.utils import load_config
 
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 def objective(trial):
     top_k = trial.suggest_int("top_k", 2, 8)
     
-    with mlflow.start_run(run_name=f"trial_{trial.number}_top{top_k}", nested=True) as nested_run:
+    with mlflow.start_run(run_name=f"trial_{trial.number}_top{top_k}", nested=True):
         # الـ Tags والـ Params الأساسية
         mlflow.set_tag("data_version", "v1.0_json")
         mlflow.set_tag("git_commit", "main_v2")
@@ -32,7 +30,6 @@ def objective(trial):
         mlflow.log_metric("mrr_at_k", metrics["mrr_at_k"])
         mlflow.log_metric("avg_latency_sec", metrics["avg_latency_sec"])
         
-        # 
         mae_proxy = max(0.0, 1.0 - metrics["hit_rate_at_k"])
         mlflow.log_metric("mae", mae_proxy)
         
@@ -45,7 +42,7 @@ def run_optuna_sweep():
     model_name = config["model"]["embedding_model"]
     
    
-    with mlflow.start_run(run_name="parent_optuna_sweep_run", log_system_metrics=True) as parent_run:
+    with mlflow.start_run(run_name="parent_optuna_sweep_run", log_system_metrics=True):
         mlflow.set_tag("author", "Asmaa")
         mlflow.set_tag("framework", "optuna_mlflow_langchain")
         mlflow.set_tag("git_commit", "main_v2")

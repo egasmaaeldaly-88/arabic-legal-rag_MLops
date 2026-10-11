@@ -1,6 +1,7 @@
-﻿import pytest
-from unittest.mock import patch
+﻿from unittest.mock import patch
+
 from arabic_legal_rag.pipeline import run_retrieval
+
 
 def test_prediction_output_and_determinism():
     query = "ما هو الإلزام العقدي؟"

@@ -1,9 +1,11 @@
 import os
-from loguru import logger
+
 import yaml
+from loguru import logger
 
 # Import core functions from model.py to ensure compatibility
 from arabic_legal_rag.model import get_embedding_model, load_vector_store
+
 
 def load_config():
     """Load project settings from the configuration file inside configs folder."""

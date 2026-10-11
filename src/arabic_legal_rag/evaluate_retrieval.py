@@ -1,6 +1,9 @@
 import os
+
 from loguru import logger
+
 from arabic_legal_rag.retriever import get_legal_retriever
+
 
 def evaluate_strategies():
     """Evaluate and compare different chunking strategies using a benchmark query."""

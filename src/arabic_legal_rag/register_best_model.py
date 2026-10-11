@@ -1,8 +1,8 @@
-import os
-import mlflow
-from mlflow.tracking import MlflowClient
-from loguru import logger
 from pathlib import Path
+
+from loguru import logger
+from mlflow.tracking import MlflowClient
+
 
 def register_best_chunking_config():
     """Identify the best-performing retrieval run in MLflow, tag it as production, and create a flag file for DVC."""

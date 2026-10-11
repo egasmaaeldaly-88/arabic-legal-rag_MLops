@@ -213,7 +213,7 @@ def build_complete_legal_corpus(pdf_path, output_json_path):
             fix_ligature_chars(right_page.chars)  # must happen before extract_text()
             right_extracted = right_page.extract_text() or ""
 
-            english_pages_blob += left_extracted + f"\n"
+            english_pages_blob += left_extracted + "\n"
             repealed_ranges |= find_repealed_ranges(left_extracted, right_extracted)
 
             leading, blocks = split_page(right_extracted, page_idx)

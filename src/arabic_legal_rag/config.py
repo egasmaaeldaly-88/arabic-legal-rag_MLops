@@ -1,5 +1,7 @@
 from pathlib import Path
+
 import yaml
+
 
 def load_config(config_path: str = "configs/config.yaml") -> dict:
     """Load configuration from YAML file with fallback paths."""

@@ -16,7 +16,7 @@ import json
 import os
 import re
 import threading
-from typing import Iterator, Optional
+from collections.abc import Iterator
 
 import httpx
 from loguru import logger
@@ -124,11 +124,11 @@ class OpenAICompatGenerator:
         self,
         base_url: str,
         model_name: str,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         max_new_tokens: int = 256,
         timeout: float = 120.0,
-        client: Optional[httpx.Client] = None,
-        extra_body: Optional[dict] = None,
+        client: httpx.Client | None = None,
+        extra_body: dict | None = None,
     ):
         self.base_url = base_url.rstrip("/")
         self.model_name = model_name
@@ -241,13 +241,12 @@ class TransformersGenerator:  # pragma: no cover - needs a model download
             thread = threading.Thread(target=self.model.generate, kwargs=kwargs)
             thread.start()
             try:
-                for token in streamer:
-                    yield token
+                yield from streamer
             finally:
                 thread.join()
 
 
-def build_generator(cfg: Optional[dict] = None):
+def build_generator(cfg: dict | None = None):
     """Create the generator from config; env vars override the config file.
 
     GENERATOR_BACKEND, LLM_MODEL, LLM_BASE_URL, LLM_MAX_TOKENS, LLM_EXTRA_BODY

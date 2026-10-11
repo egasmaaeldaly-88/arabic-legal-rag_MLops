@@ -1,5 +1,7 @@
 ﻿import pytest
+
 from arabic_legal_rag.pipeline import run_retrieval
+
 
 @pytest.mark.parametrize(
     "input_query, expected_behavior",

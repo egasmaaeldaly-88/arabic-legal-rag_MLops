@@ -65,3 +65,6 @@ omit = [
     "src/arabic_legal_rag/train_families.py",
     "src/arabic_legal_rag/pipeline.py",
 ]
+
+[tool.ruff.lint]
+ignore = ["BLE001", "S110", "FLY002"]

@@ -1,18 +1,22 @@
 import json
-import time
-import re
 import os
+import re
+import time
+from pathlib import Path
+
 import mlflow
 import numpy as np
-from pathlib import Path
-from arabic_legal_rag.utils import load_config
+from mlflow.exceptions import MlflowException
+
 from arabic_legal_rag.model import get_embedding_model, load_vector_store
+from arabic_legal_rag.utils import load_config
 
 # 1. إعدادات الـ Tracking وتفعيل الـ Traces والـ System Metrics
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
 mlflow.system_metrics.enable_system_metrics_logging()
 
 import mlflow.langchain
+
 mlflow.langchain.autolog()
 
 def normalize_digits(text: str) -> str:
@@ -104,7 +108,7 @@ def run_evaluation():
     clean_model_name = model_name.split("/")[-1]
     
     # إضافة log_system_metrics=True لضمان تسجيل مقاييس النظام بقوة
-    with mlflow.start_run(run_name=f"run_{clean_model_name}_top{top_k}_optimized", log_system_metrics=True) as run:
+    with mlflow.start_run(run_name=f"run_{clean_model_name}_top{top_k}_optimized", log_system_metrics=True):
         mlflow.log_param("embedding_model", model_name)
         mlflow.log_param("top_k", top_k)
         mlflow.log_param("eval_samples_count", len(eval_dataset))
@@ -138,9 +142,10 @@ def run_evaluation():
         
         try:
             client.create_registered_model(model_registry_name)
-        except Exception:
-            pass  # النموذج مسجل مسبقاً
-
+        except MlflowException as e:
+            if e.error_code != "RESOURCE_ALREADY_EXISTS":
+                raise
+        
         print(f"\n--- Optimized Evaluation Results (Top-{top_k}) ---")
         print(f"Hit Rate@{top_k}: {metrics['hit_rate_at_k']:.4f}")
         print(f"MRR@{top_k}:      {metrics['mrr_at_k']:.4f}")

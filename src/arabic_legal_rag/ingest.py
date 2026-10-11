@@ -1,9 +1,12 @@
 import json
 from pathlib import Path
-from langchain_core.documents import Document
-from arabic_legal_rag.utils import load_config
-from arabic_legal_rag.model import get_embedding_model
+
 from langchain_community.vectorstores import FAISS
+from langchain_core.documents import Document
+
+from arabic_legal_rag.model import get_embedding_model
+from arabic_legal_rag.utils import load_config
+
 
 def process_corpus(json_path: str = "data/legal_corpus_structured.json") -> list[Document]:
     """

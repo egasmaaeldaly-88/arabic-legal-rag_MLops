@@ -1,10 +1,11 @@
 import json
-import os
 from pathlib import Path
+
 import mlflow
+
 from arabic_legal_rag.eval import compute_metrics
 from arabic_legal_rag.utils import load_config
-from arabic_legal_rag.model import get_embedding_model, load_vector_store
+
 
 def run_three_hf_model_families():
     mlflow.set_tracking_uri("sqlite:///mlflow.db")
@@ -42,7 +43,7 @@ def run_three_hf_model_families():
         # مؤقتاً نقوم بتعديل الـ config أو تمرير اسم الموديل لعمل الـ Vector Store الخاص به
         config["model"]["embedding_model"] = fam["model_name"]
         
-        with mlflow.start_run(run_name=f"run_{fam['family_name']}", log_system_metrics=True) as run:
+        with mlflow.start_run(run_name=f"run_{fam['family_name']}", log_system_metrics=True):
             # تسجيل الـ Tags الأساسية
             mlflow.set_tag("author", "Asmaa")
             mlflow.set_tag("framework", "langchain_huggingface")

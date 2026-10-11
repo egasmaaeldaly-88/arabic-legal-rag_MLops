@@ -10,6 +10,7 @@ os.environ["GENERATOR_BACKEND"] = "extractive"
 
 import pytest
 from fastapi.testclient import TestClient
+
 from arabic_legal_rag.api import app
 from arabic_legal_rag.config import load_config
 
