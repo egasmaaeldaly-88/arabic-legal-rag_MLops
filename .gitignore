@@ -7,3 +7,5 @@ mlflow.db
 mlruns/
 models/
 outputs/
+*.egg-info/
+__pycache__/
