@@ -1,6 +1,5 @@
 import json
 import os
-import re
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, status
@@ -10,6 +9,7 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from arabic_legal_rag.generator import build_generator
+from arabic_legal_rag.rag import NOT_FOUND_AR, is_arabic, prepare_context  # noqa: F401
 from arabic_legal_rag.retriever import get_legal_retriever
 from arabic_legal_rag.utils import load_clean_corpus, load_config
 
@@ -19,7 +19,6 @@ generator = None
 PRODUCTION_INDEX_PATH = "data/vector_store_bgem3"
 _CONFIG = load_config()
 _CORPUS_SIZE = len(load_clean_corpus(_CONFIG["data"]["json_path"]))
-NOT_FOUND_AR = "لم يتم العثور على مواد قانونية متعلقة."
 
 
 def get_generator():
@@ -58,7 +57,7 @@ app = FastAPI(
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=422,
         content={"detail": "Validation error", "errors": exc.errors()},
     )
 
@@ -70,11 +69,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": "Internal server error. Traceback logged securely."},
     )
-
-
-def is_arabic(text: str) -> bool:
-    """True if the text contains Arabic letters."""
-    return bool(re.search(r"[\u0600-\u06FF]", text))
 
 
 class QueryRequest(BaseModel):
@@ -128,24 +122,13 @@ def _prepare(question: str):
     clean_question = question.strip()
     if not clean_question:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail="Question cannot be empty or consist only of whitespace.",
         )
     if not retriever:
         raise HTTPException(status_code=503, detail="Retriever is not initialized.")
 
-    arabic = is_arabic(clean_question)
-    docs = retriever.invoke(clean_question)
-
-    items, sources = [], []
-    for doc in docs:
-        art_num = str(doc.metadata.get("article_number", "")).strip()
-        if art_num:
-            citation = art_num if art_num.startswith("مادة") else f"مادة {art_num}"
-            if citation not in sources:
-                sources.append(citation)
-        text = doc.metadata.get("text_ar" if arabic else "text_en", doc.page_content)
-        items.append({"article": art_num, "text": text})
+    items, sources, arabic = prepare_context(retriever, clean_question)
     return clean_question, items, sources, arabic
 
 
