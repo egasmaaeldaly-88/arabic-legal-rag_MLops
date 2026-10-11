@@ -8,6 +8,8 @@ from arabic_legal_rag.generator import (
     OpenAICompatGenerator,
     build_generator,
     build_messages,
+    filter_thinking_stream,
+    strip_thinking,
 )
 
 ITEMS = [{"article": "558", "text": "نص المادة"}]
@@ -75,3 +77,29 @@ def test_build_generator_env_override_and_unknown_backend(monkeypatch):
     monkeypatch.setenv("GENERATOR_BACKEND", "nope")
     with pytest.raises(ValueError):
         build_generator({})
+
+
+def test_strip_thinking_removes_closed_and_unfinished_blocks():
+    assert strip_thinking("<think>تفكير</think>الجواب") == "الجواب"
+    assert strip_thinking("جواب<think>غير مكتمل") == "جواب"
+    assert strip_thinking("بدون وسوم") == "بدون وسوم"
+
+
+def test_filter_thinking_stream_handles_split_tags():
+    tokens = ["<thi", "nk>سر</th", "ink>إجا", "بة"]
+    assert "".join(filter_thinking_stream(iter(tokens))) == "إجابة"
+    assert "".join(filter_thinking_stream(iter(["مرحبا <", "b>"]))) == "مرحبا <b>"
+
+
+def test_openai_extra_body_is_sent_and_thinking_removed():
+    def handler(request):
+        body = json.loads(request.content)
+        assert body["reasoning_format"] == "hidden"
+        return httpx.Response(
+            200, json={"choices": [{"message": {"content": "<think>x</think>إجابة"}}]}
+        )
+
+    gen = OpenAICompatGenerator(
+        "http://x/v1", "m", extra_body={"reasoning_format": "hidden"}, client=_client(handler)
+    )
+    assert gen.generate("q", ITEMS, True) == "إجابة"

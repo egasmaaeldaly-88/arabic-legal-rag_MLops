@@ -20,6 +20,7 @@ Judge (any OpenAI-compatible API; defaults to Groq's free tier):
     JUDGE_BASE_URL   default https://api.groq.com/openai/v1
     JUDGE_MODEL      default openai/gpt-oss-120b
     JUDGE_API_KEY    falls back to GROQ_API_KEY
+    JUDGE_EXTRA_BODY optional JSON merged into the request, e.g. '{"reasoning_format":"hidden"}'
 
 Generated answers are cached in outputs/ragas_answers.json so a crash or a
 rate-limit stop never loses work. The cache key includes the retrieved context,
@@ -42,7 +43,7 @@ from arabic_legal_rag.rag import NOT_FOUND_AR, is_arabic, prepare_context
 from arabic_legal_rag.utils import load_clean_corpus, load_config
 
 DEFAULT_JUDGE_BASE_URL = "https://api.groq.com/openai/v1"
-DEFAULT_JUDGE_MODEL = "openai/gpt-oss-120b"
+DEFAULT_JUDGE_MODEL = "qwen/qwen3.8-27b"
 MIN_VALID_RATIO = 0.9
 METRIC_NAMES = ["faithfulness", "answer_relevancy", "context_precision", "context_recall"]
 
@@ -159,6 +160,7 @@ def run_ragas(rows: dict, metric_choice: str, embeddings):
         api_key=api_key,
         temperature=0,
         max_retries=6,
+        extra_body=json.loads(os.getenv("JUDGE_EXTRA_BODY") or "{}") or None,
     )
     eval_llm = LangchainLLMWrapper(judge)
 
