@@ -1,5 +1,6 @@
 data:
-  json_path: "data/legal_corpus_cleaned.json"
+
+  json_path: "data/legal_corpus_structured.json"
   data_dir: "data"
 
 model:
@@ -25,7 +26,7 @@ api:
 generation:
   backend: "transformers"     # transformers | openai | extractive
   model_name: "Qwen/Qwen2.5-1.5B-Instruct"
-  max_new_tokens: 256
+  max_new_tokens: 512
   dtype: "auto"                # auto = float16 on GPU, bfloat16 on CPU
   openai:                      # used when backend: openai (vLLM, Groq, OpenRouter...)
     base_url: "http://localhost:8001/v1"
