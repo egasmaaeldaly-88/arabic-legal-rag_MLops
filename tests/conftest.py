@@ -1,4 +1,9 @@
-﻿import pytest
+import os
+
+# Tests must never download or run an LLM
+os.environ.setdefault("GENERATOR_BACKEND", "extractive")
+
+import pytest
 from fastapi.testclient import TestClient
 from arabic_legal_rag.api import app
 from arabic_legal_rag.config import load_config

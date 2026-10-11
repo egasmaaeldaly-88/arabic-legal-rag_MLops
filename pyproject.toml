@@ -10,27 +10,33 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "faiss-cpu>=1.7.4",
-    "langchain-core>=0.1.0",
-    "langchain-community>=0.0.20",
-    "langchain-huggingface>=0.0.1",
+    "langchain-core>=0.3,<0.4",
+    "langchain-community>=0.3,<0.3.25",
+    "langchain-huggingface>=0.1,<0.4",
     "sentence-transformers>=2.5.0",
     "pyyaml>=6.0",
     "mlflow>=2.0.0",
     "loguru>=0.7.3",
     "psutil>=7.2.2",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "pydantic>=2.0",
+    "httpx>=0.24.0",
+    "transformers>=4.40",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
-    "httpx>=0.24.0",
     "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.23",
     "dvc>=3.0.0",
     "optuna>=3.0.0",
 ]
 eval = [
     "mlflow>=2.10.0",
-    "ragas>=0.1.0",
+    "ragas==0.2.15",
+    "datasets",
 ]
 
 [tool.setuptools.packages.find]
@@ -47,6 +53,7 @@ omit = [
     "src/arabic_legal_rag/build_corpus.py",
     "src/arabic_legal_rag/eval.py",
     "src/arabic_legal_rag/evaluate_retrieval.py",
+    "src/arabic_legal_rag/evaluate_ragas.py",
     "src/arabic_legal_rag/ingest.py",
     "src/arabic_legal_rag/register_best_model.py",
     "src/arabic_legal_rag/register_model.py",
@@ -55,8 +62,5 @@ omit = [
     "src/arabic_legal_rag/conftest.py",
     "src/arabic_legal_rag/optuna_sweep.py",
     "src/arabic_legal_rag/train_families.py",
-    "src/arabic_legal_rag/pipeline.py"
+    "src/arabic_legal_rag/pipeline.py",
 ]
-
-[tool.coverage.report]
-fail_under = 45

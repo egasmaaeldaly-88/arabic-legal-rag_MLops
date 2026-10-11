@@ -21,3 +21,13 @@ mlflow:
 api:
   host: "127.0.0.1"
   port: 8000
+
+generation:
+  backend: "transformers"     # transformers | openai | extractive
+  model_name: "Qwen/Qwen2.5-1.5B-Instruct"
+  max_new_tokens: 256
+  dtype: "auto"                # auto = float16 on GPU, bfloat16 on CPU
+  openai:                      # used when backend: openai (vLLM, Groq, OpenRouter...)
+    base_url: "http://localhost:8001/v1"
+    model_name: "Qwen/Qwen2.5-1.5B-Instruct"
+    api_key_env: "LLM_API_KEY"

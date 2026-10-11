@@ -1,4 +1,4 @@
-﻿from unittest.mock import patch
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from arabic_legal_rag.api import app
 
@@ -90,3 +90,63 @@ def test_api_predict_and_ask_happy_path(client, sample_features):
 def test_api_invalid_payload_validation(client):
     response = client.post("/ask", json={})
     assert response.status_code == 422
+
+
+class _Doc:
+    def __init__(self, article="558", text_ar="نص المادة", text_en="Article text"):
+        self.page_content = text_ar
+        self.metadata = {"article_number": article, "text_ar": text_ar, "text_en": text_en}
+
+
+class _FakeGenerator:
+    name = "fake"
+    model_name = "fake-llm"
+
+    def generate(self, question, items, arabic):
+        return "إجابة مولدة"
+
+    def stream(self, question, items, arabic):
+        yield from ["إجابة ", "مولدة"]
+
+
+@patch("arabic_legal_rag.api.generator", _FakeGenerator())
+@patch("arabic_legal_rag.api.retriever")
+def test_ask_uses_generator_and_returns_article_citations(mock_retriever):
+    mock_retriever.invoke.return_value = [_Doc("558"), _Doc("مادة 559")]
+    res = client.post("/ask", json={"question": "ما هو عقد الإيجار؟"})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["answer"] == "إجابة مولدة"
+    assert data["sources"] == ["مادة 558", "مادة 559"]
+
+
+@patch("arabic_legal_rag.api.generator", _FakeGenerator())
+@patch("arabic_legal_rag.api.retriever")
+def test_ask_no_documents_returns_not_found(mock_retriever):
+    mock_retriever.invoke.return_value = []
+    res = client.post("/ask", json={"question": "سؤال بلا نتائج"})
+    assert res.status_code == 200
+    assert res.json()["sources"] == []
+
+
+@patch("arabic_legal_rag.api.generator", _FakeGenerator())
+@patch("arabic_legal_rag.api.retriever")
+def test_ask_stream_emits_sources_tokens_and_done(mock_retriever):
+    import json
+
+    mock_retriever.invoke.return_value = [_Doc("558")]
+    res = client.post("/ask/stream", json={"question": "ما هو عقد الإيجار؟"})
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("text/event-stream")
+    events = [
+        json.loads(line[6:]) for line in res.text.splitlines() if line.startswith("data: ")
+    ]
+    assert events[0] == {"type": "sources", "sources": ["مادة 558"]}
+    assert "".join(e["text"] for e in events if e["type"] == "token") == "إجابة مولدة"
+    assert events[-1] == {"type": "done"}
+
+
+def test_whitespace_only_question_rejected():
+    res = client.post("/ask", json={"question": "   "})
+    assert res.status_code == 422
+

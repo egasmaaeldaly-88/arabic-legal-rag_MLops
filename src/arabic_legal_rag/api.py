@@ -1,41 +1,59 @@
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request, status
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
-from loguru import logger
+import json
 import os
 import re
+from contextlib import asynccontextmanager
 
-# Import our production-ready retriever and config utils
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse, StreamingResponse
+from loguru import logger
+from pydantic import BaseModel, Field
+
+from arabic_legal_rag.generator import build_generator
 from arabic_legal_rag.retriever import get_legal_retriever
-from arabic_legal_rag.utils import load_config, load_clean_corpus
+from arabic_legal_rag.utils import load_clean_corpus, load_config
 
-# Global retriever variable and paths
+# Globals populated at startup (generator is also built lazily on first use)
 retriever = None
+generator = None
 PRODUCTION_INDEX_PATH = "data/vector_store_bgem3"
 _CONFIG = load_config()
 _CORPUS_SIZE = len(load_clean_corpus(_CONFIG["data"]["json_path"]))
+NOT_FOUND_AR = "لم يتم العثور على مواد قانونية متعلقة."
+
+
+def get_generator():
+    """Return the active generator, building it from config on first use."""
+    global generator
+    if generator is None:
+        generator = build_generator(_CONFIG.get("generation", {}))
+    return generator
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global retriever
+    global retriever, generator
     logger.info("Initializing production legal retriever...")
     if not os.path.exists(PRODUCTION_INDEX_PATH):
         raise RuntimeError(f"Vector store not found at {PRODUCTION_INDEX_PATH}")
-    
+
     retriever = get_legal_retriever(index_path=PRODUCTION_INDEX_PATH, k=3)
     logger.info("Retriever successfully loaded!")
+    get_generator()  # load the LLM once at startup, not on the first request
+    logger.info("Generator ready.")
     yield
-    logger.info("Cleaning up retriever resources...")
+    logger.info("Cleaning up resources...")
     retriever = None
+    generator = None
+
 
 app = FastAPI(
     title="Arabic Legal RAG API",
     description="API for Egyptian Civil Code Q&A and Legal Article Retrieval",
-    version="1.0.0",
-    lifespan=lifespan
+    version="1.1.0",
+    lifespan=lifespan,
 )
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -43,6 +61,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={"detail": "Validation error", "errors": exc.errors()},
     )
+
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -52,93 +71,127 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": "Internal server error. Traceback logged securely."},
     )
 
+
 def is_arabic(text: str) -> bool:
-    """التحقق مما إذا كان السؤال يحتوي على حروف عربية"""
-    arabic_pattern = re.compile(r'[\u0600-\u06FF]')
-    return bool(arabic_pattern.search(text))
+    """True if the text contains Arabic letters."""
+    return bool(re.search(r"[\u0600-\u06FF]", text))
+
 
 class QueryRequest(BaseModel):
     question: str = Field(..., min_length=1, description="Question string cannot be empty")
+
 
 class QueryResponse(BaseModel):
     answer: str
     sources: list[str]
 
+
 class HealthResponse(BaseModel):
     status: str
     documents_indexed: int
+
 
 class MetadataResponse(BaseModel):
     model_name: str
     embedding_framework: str
     corpus_size: int
     vector_store_path: str
+    generation_backend: str = "unknown"
+    generation_model: str = "unknown"
+
 
 @app.get("/health", response_model=HealthResponse)
 def health_check():
     if retriever is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Retriever object not loaded in memory")
-    return HealthResponse(
-        status="healthy",
-        documents_indexed=_CORPUS_SIZE
-    )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Retriever object not loaded in memory",
+        )
+    return HealthResponse(status="healthy", documents_indexed=_CORPUS_SIZE)
+
 
 @app.get("/metadata", response_model=MetadataResponse)
 def get_metadata():
+    gen = get_generator()
     return MetadataResponse(
         model_name="BAAI/bge-m3",
         embedding_framework="LangChain + FAISS",
         corpus_size=_CORPUS_SIZE,
-        vector_store_path=PRODUCTION_INDEX_PATH
+        vector_store_path=PRODUCTION_INDEX_PATH,
+        generation_backend=gen.name,
+        generation_model=gen.model_name,
     )
 
-@app.post("/ask", response_model=QueryResponse)
-def ask_legal_question(request: QueryRequest):
-    global retriever
-    clean_question = request.question.strip()
+
+def _prepare(question: str):
+    """Validate, retrieve, and build (items, sources, arabic) for generation."""
+    clean_question = question.strip()
     if not clean_question:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Question cannot be empty or consist only of whitespace."
+            detail="Question cannot be empty or consist only of whitespace.",
         )
-
     if not retriever:
         raise HTTPException(status_code=503, detail="Retriever is not initialized.")
 
+    arabic = is_arabic(clean_question)
+    docs = retriever.invoke(clean_question)
+
+    items, sources = [], []
+    for doc in docs:
+        art_num = str(doc.metadata.get("article_number", "")).strip()
+        if art_num:
+            citation = art_num if art_num.startswith("مادة") else f"مادة {art_num}"
+            if citation not in sources:
+                sources.append(citation)
+        text = doc.metadata.get("text_ar" if arabic else "text_en", doc.page_content)
+        items.append({"article": art_num, "text": text})
+    return clean_question, items, sources, arabic
+
+
+@app.post("/ask", response_model=QueryResponse)
+def ask_legal_question(request: QueryRequest):
+    question, items, sources, arabic = _prepare(request.question)
+    if not items:
+        return QueryResponse(answer=NOT_FOUND_AR, sources=[])
     try:
-        docs = retriever.invoke(clean_question)
-        if not docs:
-            return QueryResponse(answer="لم يتم العثور على مواد قانونية متعلقة.", sources=[])
-
-        # تحديد لغة المستخدم بناءً على سؤاله
-        user_wants_arabic = is_arabic(clean_question)
-
-        sources = []
-        contents = []
-
-        for doc in docs:
-            art_num = str(doc.metadata.get("article_number", "")).strip()
-            if art_num:
-                citation = art_num if art_num.startswith("مادة") else f"مادة {art_num}"
-                if citation not in sources:
-                    sources.append(citation)
-            
-            # اختيار اللغة المناسبة للرد بناءً على لغة السؤال
-            if user_wants_arabic:
-                article_text = doc.metadata.get("text_ar", doc.page_content)
-                contents.append(f"[{art_num}]: {article_text}")
-            else:
-                article_text = doc.metadata.get("text_en", doc.page_content)
-                contents.append(f"[Article {art_num}]: {article_text}")
-
-        return QueryResponse(
-            answer="\n\n".join(contents),
-            sources=sources
-        )
+        answer = get_generator().generate(question, items, arabic)
     except Exception as e:
-        logger.error(f"Error during retrieval: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    
+        logger.error(f"Error during generation: {e}")
+        raise HTTPException(status_code=500, detail="Answer generation failed.")
+    return QueryResponse(answer=answer, sources=sources)
+
+
+def _sse(payload: dict) -> str:
+    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+@app.post("/ask/stream")
+def ask_legal_question_stream(request: QueryRequest):
+    """Server-Sent Events: a `sources` event, then `token` events, then `done`."""
+    question, items, sources, arabic = _prepare(request.question)
+
+    def event_stream():
+        yield _sse({"type": "sources", "sources": sources})
+        if not items:
+            yield _sse({"type": "token", "text": NOT_FOUND_AR})
+            yield _sse({"type": "done"})
+            return
+        try:
+            for token in get_generator().stream(question, items, arabic):
+                yield _sse({"type": "token", "text": token})
+        except Exception as e:
+            logger.error(f"Error during streaming generation: {e}")
+            yield _sse({"type": "error", "detail": "Answer generation failed."})
+        yield _sse({"type": "done"})
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @app.post("/predict", response_model=QueryResponse)
 def predict_legal_question(request: QueryRequest):
     return ask_legal_question(request)
