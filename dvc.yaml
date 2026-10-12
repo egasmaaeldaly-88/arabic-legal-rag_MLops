@@ -46,13 +46,20 @@ stages:
     cmd: python -m arabic_legal_rag.eval
     deps:
       - src/arabic_legal_rag/eval.py
-      - data/vector_store_bgem3/  
+      - data/vector_store_bgem3/
     outs:
-      - mlflow.db
+      - outputs/evaluation_report.json
+
+  chunking_sweep:
+    cmd: python src/arabic_legal_rag/chunking_sweep.py
+    deps:
+      - src/arabic_legal_rag/chunking_sweep.py
+      - data/eval_dataset.json
 
   register_best_model:
     cmd: python src/arabic_legal_rag/register_best_model.py
     deps:
       - src/arabic_legal_rag/register_best_model.py
+      - outputs/evaluation_report.json
     outs:
       - outputs/best_config_registered.flag

@@ -118,6 +118,10 @@ def run_evaluation():
         mlflow.log_metric("hit_rate_at_k", metrics["hit_rate_at_k"])
         mlflow.log_metric("mrr_at_k", metrics["mrr_at_k"])
         mlflow.log_metric("avg_latency_sec", metrics["avg_latency_sec"])
+        mlflow.log_param("chunk_size", "article")
+        mlflow.log_param("overlap", 0)
+
+        
 
         # --- 1. حفظ النتائج كـ Artifact ملموس ---
         report_dir = Path("outputs")

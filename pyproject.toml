@@ -64,6 +64,7 @@ omit = [
     "src/arabic_legal_rag/optuna_sweep.py",
     "src/arabic_legal_rag/train_families.py",
     "src/arabic_legal_rag/pipeline.py",
+    "src/arabic_legal_rag/chunking_sweep.py"
 ]
 
 [tool.ruff.lint]
