@@ -33,58 +33,53 @@ jobs:
       with:
         path: .hf_cache
         key: hf-bge-m3-v1
-        
+
     - name: Install dependencies
       run: |
         uv venv
-          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
-          # CPU-only torch first: avoids pulling multi-GB CUDA wheels onto the runner
-          uv pip install torch --index-url https://download.pytorch.org/whl/cpu
-          uv pip install -e ".[dev,eval]" ruff
+        echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+        uv pip install torch --index-url https://download.pytorch.org/whl/cpu
+        uv pip install -e ".[dev,eval]" ruff
 
-      - name: Lint (fails the build on errors)
-        run: ruff check src tests
+    - name: Lint (fails the build on errors)
+      run: ruff check src tests
 
-      - name: Rebuild index (validate corpus -> embed -> vector store)
-        # Only the stages CI needs. The full `dvc repro` also runs ONNX export,
-        # model sweeps and registration, and the DVC remote is a local Windows path.
-        run: dvc repro build_index
+    - name: Rebuild index (validate corpus -> embed -> vector store)
+      run: dvc repro build_index
 
-      - name: Run tests
-        run: pytest -v
+    - name: Run tests
+      run: pytest -v
 
-      - name: RAGAS faithfulness gate (fails if < 0.75 on 20 questions)
-        env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          LLM_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          GENERATOR_BACKEND: openai
-          LLM_BASE_URL: https://api.groq.com/openai/v1
-          LLM_MODEL: qwen/qwen3.8-27b
-          JUDGE_MODEL: openai/gpt-oss-120b
-          JUDGE_MAX_TOKENS: "4000"
-          JUDGE_EXTRA_BODY: '{"reasoning_effort":"low"}'
-        run: >
-          python -m arabic_legal_rag.evaluate_ragas
-          --num-questions 20 --metrics faithfulness --threshold 0.75
+    - name: RAGAS faithfulness gate (fails if < 0.75 on 20 questions)
+      env:
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        LLM_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        GENERATOR_BACKEND: openai
+        LLM_BASE_URL: https://api.groq.com/openai/v1
+        LLM_MODEL: qwen/qwen3.8-27b
+        JUDGE_MODEL: openai/gpt-oss-120b
+        JUDGE_MAX_TOKENS: "4000"
+        JUDGE_EXTRA_BODY: '{"reasoning_effort":"low"}'
+      run: >
+        python -m arabic_legal_rag.evaluate_ragas
+        --num-questions 20 --metrics faithfulness --threshold 0.75
 
-      - name: Upload RAGAS report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ragas-report
-          path: reports/
-          if-no-files-found: ignore
+    - name: Upload RAGAS report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ragas-report
+        path: reports/
+        if-no-files-found: ignore
 
-      - name: Upload vector store for the Docker job
-        uses: actions/upload-artifact@v4
-        with:
-          name: vector-store
-          path: data/vector_store_bgem3/
+    - name: Upload vector store for the Docker job
+      uses: actions/upload-artifact@v4
+      with:
+        name: vector-store
+        path: data/vector_store_bgem3/
 
   docker-build-and-push:
     needs: validate-and-test
-    # Runs on every push (not on PRs). Branch pushes get a branch/sha tag;
-    # `latest` is only moved on main.
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
@@ -95,89 +90,86 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-      - name: Download vector store built by the previous job
-        uses: actions/download-artifact@v4
-        with:
-          name: vector-store
-          path: data/vector_store_bgem3/
+    - name: Download vector store built by the previous job
+      uses: actions/download-artifact@v4
+      with:
+        name: vector-store
+        path: data/vector_store_bgem3/
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-      - name: Login to GitHub Container Registry
+    - name: Login to GitHub Container Registry
       uses: docker/login-action@v3
       with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Image tags
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/arabic-legal-rag
-          tags: |
-            type=sha
-            type=ref,event=branch
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+    - name: Image tags
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ github.repository_owner }}/arabic-legal-rag
+        tags: |
+          type=sha
+          type=ref,event=branch
+          type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
-      - name: Build image (not pushed yet)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          load: true
-          push: false
-          tags: arabic-legal-rag:test
+    - name: Build image (not pushed yet)
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        load: true
+        push: false
+        tags: arabic-legal-rag:test
 
-      - name: Smoke test the container
-        # Starts the real image and checks /health, /ask and input validation,
-        # so a broken image is never pushed. Uses the extractive generator so the
-        # runner does not have to download an LLM.
-        run: |
-          docker run -d --name rag -p 8000:8000 \
-            -e GENERATOR_BACKEND=extractive arabic-legal-rag:test
+    - name: Smoke test the container
+      run: |
+        docker run -d --name rag -p 8000:8000 \
+          -e GENERATOR_BACKEND=extractive arabic-legal-rag:test
 
-          ok=0
-          for i in $(seq 1 60); do
-            if curl -sf http://localhost:8000/health > health.json; then ok=1; break; fi
-            sleep 5
-          done
-          if [ "$ok" != "1" ]; then
-            echo "Container never became healthy"; docker logs rag; exit 1
-          fi
+        ok=0
+        for i in $(seq 1 60); do
+          if curl -sf http://localhost:8000/health > health.json; then ok=1; break; fi
+          sleep 5
+        done
+        if [ "$ok" != "1" ]; then
+          echo "Container never became healthy"; docker logs rag; exit 1
+        fi
 
-          cat health.json
-          python3 - <<'PY'
-          import json
-          d = json.load(open("health.json"))
-          assert d["status"] == "healthy", d
-          assert d["documents_indexed"] > 0, d
-          PY
+        cat health.json
+        python3 - <<'PY'
+        import json
+        d = json.load(open("health.json"))
+        assert d["status"] == "healthy", d
+        assert d["documents_indexed"] > 0, d
+        PY
 
-          curl -sf -X POST http://localhost:8000/ask \
-            -H "Content-Type: application/json; charset=utf-8" \
-            --data-binary '{"question":"ما هو التزام البائع بالضمان؟"}' > ask.json
-          cat ask.json
-          python3 - <<'PY'
-          import json
-          d = json.load(open("ask.json"))
-          assert d["answer"].strip(), "empty answer"
-          assert d["sources"], "no sources returned"
-          PY
+        curl -sf -X POST http://localhost:8000/ask \
+          -H "Content-Type: application/json; charset=utf-8" \
+          --data-binary '{"question":"ما هو التزام البائع بالضمان؟"}' > ask.json
+        cat ask.json
+        python3 - <<'PY'
+        import json
+        d = json.load(open("ask.json"))
+        assert d["answer"].strip(), "empty answer"
+        assert d["sources"], "no sources returned"
+        PY
 
-          code=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8000/ask \
-            -H "Content-Type: application/json" -d '{"question":""}')
-          echo "empty question -> HTTP $code"
-          [ "$code" = "422" ]
+        code=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8000/ask \
+          -H "Content-Type: application/json" -d '{"question":""}')
+        echo "empty question -> HTTP $code"
+        [ "$code" = "422" ]
 
-      - name: Container logs (on failure)
-        if: failure()
-        run: docker logs rag || true
+    - name: Container logs (on failure)
+      if: failure()
+      run: docker logs rag || true
 
-      - name: Push image
+    - name: Push image
       uses: docker/build-push-action@v5
       with:
         context: .
         push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
