@@ -121,7 +121,60 @@ jobs:
             type=ref,event=branch
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
-      - name: Build and push image
+      - name: Build image (not pushed yet)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          load: true
+          push: false
+          tags: arabic-legal-rag:test
+
+      - name: Smoke test the container
+        # Starts the real image and checks /health, /ask and input validation,
+        # so a broken image is never pushed. Uses the extractive generator so the
+        # runner does not have to download an LLM.
+        run: |
+          docker run -d --name rag -p 8000:8000 \
+            -e GENERATOR_BACKEND=extractive arabic-legal-rag:test
+
+          ok=0
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8000/health > health.json; then ok=1; break; fi
+            sleep 5
+          done
+          if [ "$ok" != "1" ]; then
+            echo "Container never became healthy"; docker logs rag; exit 1
+          fi
+
+          cat health.json
+          python3 - <<'PY'
+          import json
+          d = json.load(open("health.json"))
+          assert d["status"] == "healthy", d
+          assert d["documents_indexed"] > 0, d
+          PY
+
+          curl -sf -X POST http://localhost:8000/ask \
+            -H "Content-Type: application/json; charset=utf-8" \
+            --data-binary '{"question":"ما هو التزام البائع بالضمان؟"}' > ask.json
+          cat ask.json
+          python3 - <<'PY'
+          import json
+          d = json.load(open("ask.json"))
+          assert d["answer"].strip(), "empty answer"
+          assert d["sources"], "no sources returned"
+          PY
+
+          code=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8000/ask \
+            -H "Content-Type: application/json" -d '{"question":""}')
+          echo "empty question -> HTTP $code"
+          [ "$code" = "422" ]
+
+      - name: Container logs (on failure)
+        if: failure()
+        run: docker logs rag || true
+
+      - name: Push image
         uses: docker/build-push-action@v5
         with:
           context: .
