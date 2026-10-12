@@ -33,7 +33,7 @@ jobs:
       with:
         path: .hf_cache
         key: hf-bge-m3-v1
-
+        
     - name: Install dependencies
       run: |
         uv venv
