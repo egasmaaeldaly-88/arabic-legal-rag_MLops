@@ -10,10 +10,10 @@ from arabic_legal_rag.utils import load_clean_corpus, load_config
 __version__ = "0.1.0"
 
 __all__ = [
-    "load_config",
-    "load_clean_corpus",
-    "get_embedding_model",
-    "load_vector_store",
     "build_vector_database",
+    "get_embedding_model",
+    "load_clean_corpus",
+    "load_config",
+    "load_vector_store",
     "run_retrieval",
 ]

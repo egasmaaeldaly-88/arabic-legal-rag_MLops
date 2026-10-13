@@ -5,46 +5,123 @@ stages:
     deps:
     - path: export_to_onnx.py
       hash: md5
-      md5: f8a7831602ceb243f26aabd254051433
-      size: 447
+      md5: dbf5d8a47d8ea5b2b7290127d938251c
+      size: 469
     outs:
     - path: models/onnx/
       hash: md5
-      md5: 275bca65ce36634d16414d7811e515b9.dir
-      size: 487721792
+      md5: 1bd52a0ad9a648f3e82317bfe340f814.dir
+      size: 2288163741
       nfiles: 4
   build_index:
     cmd: python src/arabic_legal_rag/ingest.py
     deps:
+    - path: data/legal_corpus_structured.json
+      hash: md5
+      md5: 2195967ea4ec455a3a01d8df83b973ab
+      size: 1218644
     - path: models/onnx/
       hash: md5
-      md5: 275bca65ce36634d16414d7811e515b9.dir
-      size: 487721792
+      md5: 1bd52a0ad9a648f3e82317bfe340f814.dir
+      size: 2288163741
       nfiles: 4
     - path: src/arabic_legal_rag/ingest.py
       hash: md5
-      md5: 3c4822fb74d7c99ac6078e5d3d9406b9
-      size: 1597
+      md5: 01f8eddc944a1ed778d4b9b8802e5105
+      size: 2815
     outs:
-    - path: data/vector_store/
+    - path: data/vector_store_bgem3/
       hash: md5
-      md5: 83c9646384c894fa440ecb4f2edd8101.dir
-      size: 2381791
+      md5: a988f148973783afb819ef73e618d590.dir
+      size: 6446853
       nfiles: 2
   evaluate:
     cmd: python -m arabic_legal_rag.eval
     deps:
-    - path: data/vector_store/
+    - path: data/vector_store_bgem3/
       hash: md5
-      md5: 83c9646384c894fa440ecb4f2edd8101.dir
-      size: 2381791
+      md5: a988f148973783afb819ef73e618d590.dir
+      size: 6446853
       nfiles: 2
     - path: src/arabic_legal_rag/eval.py
       hash: md5
-      md5: 99f1da63ff44cbab489c4a1f893e9cfc
-      size: 4118
+      md5: 15b198153585cb4842479826d18e54b9
+      size: 6210
     outs:
     - path: mlflow.db
       hash: md5
-      md5: 0ea1bde397a2d13e31ac529a5e116e6f
-      size: 876544
+      md5: d9ec4d8fe74117d434961e9c7c42f5ea
+      size: 1249280
+  register_best_model:
+    cmd: python src/arabic_legal_rag/register_best_model.py
+    deps:
+    - path: src/arabic_legal_rag/register_best_model.py
+      hash: md5
+      md5: ade04a038837d552d282dc8058d62f65
+      size: 2296
+    outs:
+    - path: outputs/best_config_registered.flag
+      hash: md5
+      md5: 8e12feb690e7fa8f9426fdcadf95b656
+      size: 24
+  validate_corpus:
+    cmd: python src/arabic_legal_rag/validate_corpus.py
+    deps:
+    - path: data/legal_corpus_structured.json
+      hash: md5
+      md5: 2195967ea4ec455a3a01d8df83b973ab
+      size: 1218644
+    - path: src/arabic_legal_rag/validate_corpus.py
+      hash: md5
+      md5: 367421af7b640506df45665476d36714
+      size: 3559
+    outs:
+    - path: outputs/validation.flag
+      hash: md5
+      md5: 85453173e150860f327ea125eff08474
+      size: 31
+  train_model_families:
+    cmd: python -m src.arabic_legal_rag.train_families
+    deps:
+    - path: data/eval_dataset.json
+      hash: md5
+      md5: 3da98b1d535ff48ea130691477d5dc2b
+      size: 3693
+    - path: data/vector_store_bgem3/
+      hash: md5
+      md5: a988f148973783afb819ef73e618d590.dir
+      size: 6446853
+      nfiles: 2
+    - path: src/arabic_legal_rag/train_families.py
+      hash: md5
+      md5: fb60c8726de86d4ad75919cbd7d124f6
+      size: 3990
+    outs:
+    - path: outputs/evaluation_report_Alternative_Model.json
+      hash: md5
+      md5: 7978ce1f862f4457610a58d4bdfa49bd
+      size: 257
+    - path: outputs/evaluation_report_Baseline_MiniLM.json
+      hash: md5
+      md5: dc41c425b2692c31756e5f0dfdbe93c2
+      size: 276
+    - path: outputs/evaluation_report_Optimal_BGE_M3.json
+      hash: md5
+      md5: e62732524c9adb1e4e3f531ee51cd99a
+      size: 228
+  optuna_sweep:
+    cmd: python -m src.arabic_legal_rag.optuna_sweep
+    deps:
+    - path: data/eval_dataset.json
+      hash: md5
+      md5: 3da98b1d535ff48ea130691477d5dc2b
+      size: 3693
+    - path: src/arabic_legal_rag/optuna_sweep.py
+      hash: md5
+      md5: 14dd063caaaad2c2fb132926a975d21e
+      size: 3044
+    outs:
+    - path: outputs/optuna_best_params.json
+      hash: md5
+      md5: 2536cb12af46d459b5d78c4fca9342a6
+      size: 20

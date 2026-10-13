@@ -1,0 +1,22 @@
+.git
+.venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.coverage
+notebooks/
+tests/
+*.ipynb
+.env
+
+# Experiment artifacts that must not go into the image
+# (data/vector_store_bgem3/ is intentionally NOT ignored: the image needs it)
+data/vector_store_sz_*
+data/vector_store_mpnet/
+data/vector_store/
+models/
+outputs/
+mlruns/
+mlflow.db
+reports/

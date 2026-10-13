@@ -1,9 +1,34 @@
 data:
-  json_path: "data/legal_corpus_cleaned.json"
 
-vector_db:
-  index_dir: "vector_db/faiss_legal_index"
+  json_path: "data/legal_corpus_structured.json"
+  data_dir: "data"
 
 model:
-  embedding_model: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+  embedding_model: "BAAI/bge-m3"
   top_k: 3
+vector_db:
+  index_dir: "data/vector_store_bgem3"
+
+retrieval:
+  top_k: 5
+  supported_languages:
+    - "ar"
+    - "en"
+
+mlflow:
+  experiment_name: "arabic_legal_rag_bge_m3"
+  tracking_uri: "sqlite:///mlflow.db"
+
+api:
+  host: "127.0.0.1"
+  port: 8000
+
+generation:
+  backend: "transformers"     # transformers | openai | extractive
+  model_name: "Qwen/Qwen2.5-1.5B-Instruct"
+  max_new_tokens: 512
+  dtype: "auto"                # auto = float16 on GPU, bfloat16 on CPU
+  openai:                      # used when backend: openai (vLLM, Groq, OpenRouter...)
+    base_url: "http://localhost:8001/v1"
+    model_name: "Qwen/Qwen2.5-1.5B-Instruct"
+    api_key_env: "LLM_API_KEY"

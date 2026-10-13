@@ -1,6 +1,8 @@
-import os
 import json
+import os
+
 import yaml
+
 
 def load_config(config_path: str = "configs/config.yaml") -> dict:
     if not os.path.exists(config_path):

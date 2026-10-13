@@ -1,14 +1,262 @@
 [
   {
-    "query": "ما هو التعويض عن العمل غير المشروع والإلتزام بإصلاح الضرر؟",
-    "expected_articles": ["163"]
-  },
-  {
-    "query": "ما هي أحكام العقد شريعة المتعاقدين والقوة القاهرة؟",
-    "expected_articles": ["147"]
-  },
-  {
     "query": "ما هو تعريف عقد الإيجار والتزامات المؤجر والمستأجر؟",
-    "expected_articles": ["558"]
+    "expected_articles": ["558"],
+    "language": "ar"
+  },
+  {
+    "query": "What is the definition of a lease contract and the obligations of the lessor and lessee?",
+    "expected_articles": ["558"],
+    "language": "en"
+  },
+  {
+    "query": "كيف يتم تطبيق النصوص التشريعية وما حكم المبدأ في حالة عدم وجود نص تشريعي؟",
+    "expected_articles": ["1"],
+    "language": "ar"
+  },
+  {
+    "query": "How are legislative texts applied and what is the rule in the absence of a legislative provision?",
+    "expected_articles": ["1"],
+    "language": "en"
+  },
+  {
+    "query": "ما هو حكم استعمال الحق ومتى يعتبر استعمال الحق غير مشروع؟",
+    "expected_articles": ["4", "5"],
+    "language": "ar"
+  },
+  {
+    "query": "What is the rule regarding the exercise of rights and when is the exercise of a right considered unlawful?",
+    "expected_articles": ["4", "5"],
+    "language": "en"
+  },
+  {
+    "query": "متى تبدأ شخصية الإنسان ومتى تنتهي وما حكم حقوق الحمل المستكن؟",
+    "expected_articles": ["29"],
+    "language": "ar"
+  },
+  {
+    "query": "When does human legal personality begin and end, and what are the rules regarding the rights of an unborn foetus?",
+    "expected_articles": ["29"],
+    "language": "en"
+  },
+  {
+    "query": "ما هي قاعدة العقد شريعة المتعاقدين وما هو نطاق تنفيذ العقود؟",
+    "expected_articles": ["147"],
+    "language": "ar"
+  },
+  {
+    "query": "What is the rule that a contract is the law of the parties and what is the scope of contract execution?",
+    "expected_articles": ["147"],
+    "language": "en"
+  },
+  {
+    "query": "ما هي شروط الغلط الجوهري الذي يجيز إبطال العقد؟",
+    "expected_articles": ["120", "121"],
+    "language": "ar"
+  },
+  {
+    "query": "What are the conditions of material error that justify the annulment of a contract?",
+    "expected_articles": ["120", "121"],
+    "language": "en"
+  },
+  {
+    "query": "ما هي الآثار القانونية لدفع العربون عند إبرام العقد؟",
+    "expected_articles": ["103"],
+    "language": "ar"
+  },
+  {
+    "query": "What are the legal effects of paying earnest money upon concluding a contract?",
+    "expected_articles": ["103"],
+    "language": "en"
+  },
+  {
+    "query": "ما هو المبدأ العام في المسؤولية التقصيرية عن الأفعال الضارة؟",
+    "expected_articles": ["163"],
+    "language": "ar"
+  },
+  {
+    "query": "What is the general principle of tort liability for harmful acts?",
+    "expected_articles": ["163"],
+    "language": "en"
+  },
+  {
+    "query": "ما هو حكم الأشياء التي تخرج عن التعامل بطبيعتها أو بحكم القانون؟",
+    "expected_articles": ["81"],
+    "language": "ar"
+  },
+  {
+    "query": "What is the rule regarding things that are out of commerce by their nature or by law?",
+    "expected_articles": ["81"],
+    "language": "en"
+  },
+  {
+    "query": "متى يجوز إبطال العقد بسبب الاستغلال أو الغبن الفاحش؟",
+    "expected_articles": ["129"],
+    "language": "ar"
+  },
+  {
+    "query": "When is it permissible to annul a contract due to exploitation or severe lesion?",
+    "expected_articles": ["129"],
+    "language": "en"
+  },
+  {
+    "query": "ما هي الآثار المترتبة على محل العقد إذا كان مستحيلاً أو غير محدد؟",
+    "expected_articles": ["133", "134"],
+    "language": "ar"
+  },
+  {
+    "query": "What are the consequences if the subject matter of a contract is impossible or indeterminate?",
+    "expected_articles": ["133", "134"],
+    "language": "en"
+  },
+  {
+    "query": "ما هو حكم الشرط الواقف والشرط الفاسخ في الالتزامات؟",
+    "expected_articles": ["265", "266"],
+    "language": "ar"
+  },
+  {
+    "query": "What is the rule regarding suspensive and resolutory conditions in obligations?",
+    "expected_articles": ["265", "266"],
+    "language": "en"
+  },
+  {
+    "query": "كيف يتم انقضاء الالتزام بالوفاء وما هي احكام الوفاء بغير الدين المستحق؟",
+    "expected_articles": ["323", "182"],
+    "language": "ar"
+  },
+  {
+    "query": "How is an obligation extinguished by performance and what are the rules of payment of an undue debt?",
+    "expected_articles": ["323", "182"],
+    "language": "en"
+  },
+  {
+    "query": "ما هي أحكام التقادم المقطعي للالتزامات في القانون المدني؟",
+    "expected_articles": ["374", "375"],
+    "language": "ar"
+  },
+  {
+    "query": "What are the rules regarding the extinctive prescription of obligations in civil law?",
+    "expected_articles": ["374", "375"],
+    "language": "en"
+  },
+  {
+    "query": "ما هي أحكام حق الملكية وما هو نطاق استعماله على العقارات؟",
+    "expected_articles": ["802", "804"],
+    "language": "ar"
+  },
+  {
+    "query": "What are the provisions of ownership rights and the scope of their exercise on real estate?",
+    "expected_articles": ["802", "804"],
+    "language": "en"
+  },
+  {
+    "query": "ما هي أحكام التصرف في المال الشائع وهل يجوز للشركاء المطالبة بالقسمة؟",
+    "expected_articles": ["826", "834"],
+    "language": "ar"
+  },
+  {
+    "query": "What are the rules for disposing of common property and can partners demand partition?",
+    "expected_articles": ["826", "834"],
+    "language": "en"
+  },
+  {
+    "query": "ما هو الرهن الرسمي وما هي الشروط الواجب توفرها لصحة انعقاده؟",
+    "expected_articles": ["1030", "1033"],
+    "language": "ar"
+  },
+  {
+    "query": "What is the formal mortgage and what conditions must be met for its validity?",
+    "expected_articles": ["1030", "1033"],
+    "language": "en"
+  },
+  {
+    "query": "ما هي التزامات البائع بتسليم المبيع وضمان العيوب الخفية؟",
+    "expected_articles": ["435", "447"],
+    "language": "ar"
+  },
+  {
+    "query": "What are the seller's obligations to deliver the sold item and guarantee hidden defects?",
+    "expected_articles": ["435", "447"],
+    "language": "en"
+  },
+  {
+    "query": "ما هي أحكام عقد المقاولة والتزامات المقاول في تنفيذ العمل؟",
+    "expected_articles": ["646", "650"],
+    "language": "ar"
+  },
+  {
+    "query": "What are the provisions of the construction contract and the contractor's obligations in executing the work?",
+    "expected_articles": ["646", "650"],
+    "language": "en"
+  },
+  {
+    "query": "ما هي أحكام الوكالة وكيف تنتهي الوكالة القانونية أو الاتفاقية؟",
+    "expected_articles": ["699", "715"],
+    "language": "ar"
+  },
+  {
+    "query": "What are the provisions of agency and how does legal or contractual agency terminate?",
+    "expected_articles": ["699", "715"],
+    "language": "en"
+  },
+  {
+    "query": "ما هو حكم المسؤولية عن حراسة الأشياء وحراسة الحيوانات؟",
+    "expected_articles": ["178", "176"],
+    "language": "ar"
+  },
+  {
+    "query": "What is the rule regarding liability for the custody of things and animals?",
+    "expected_articles": ["178", "176"],
+    "language": "en"
+  },
+  {
+    "query": "ما هي شروط المسؤولية العقدية وكيف يتم تقدير التعويض عنها؟",
+    "expected_articles": ["221", "222"],
+    "language": "ar"
+  },
+  {
+    "query": "What are the conditions of contractual liability and how is compensation for it assessed?",
+    "expected_articles": ["221", "222"],
+    "language": "en"
+  },
+  {
+    "query": "ما هو حكم الوفاء البدلي والإبراء من الدين؟",
+    "expected_articles": ["355", "362"],
+    "language": "ar"
+  },
+  {
+    "query": "What is the rule regarding substitute performance and release from debt?",
+    "expected_articles": ["355", "362"],
+    "language": "en"
+  },
+  {
+    "query": "ما هي شروط الحيازة المكتسبة للملكية بالتقادم المكسب؟",
+    "expected_articles": ["949", "968"],
+    "language": "ar"
+  },
+  {
+    "query": "What are the conditions of possession required to acquire ownership by acquisitive prescription?",
+    "expected_articles": ["949", "968"],
+    "language": "en"
+  },
+  {
+    "query": "ما هو حكم حق الارتفاق وكيف يتم إنشاؤه وانقضاؤه؟",
+    "expected_articles": ["1015", "1024"],
+    "language": "ar"
+  },
+  {
+    "query": "What is the rule regarding easement rights and how are they established and terminated?",
+    "expected_articles": ["1015", "1024"],
+    "language": "en"
+  },
+  {
+    "query": "ما هو حكم الجوار غير المألوف وإزالة الضرر الفاحش؟",
+    "expected_articles": ["807"],
+    "language": "ar"
+  },
+  {
+    "query": "What is the rule regarding unusual neighborhood disturbances and the removal of severe harm?",
+    "expected_articles": ["807"],
+    "language": "en"
   }
 ]
