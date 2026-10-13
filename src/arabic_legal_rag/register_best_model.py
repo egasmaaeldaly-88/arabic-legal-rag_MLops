@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import mlflow
@@ -13,7 +14,7 @@ MODEL_NAME = "ArabicLegalRAG_Retriever"
 
 def register_best_model():
     config = load_config("configs/config.yaml")
-    mlflow.set_tracking_uri(config["mlflow"]["tracking_uri"])
+    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", config["mlflow"]["tracking_uri"]))
     client = MlflowClient()
 
     exp = client.get_experiment_by_name(EXPERIMENT)
@@ -22,7 +23,7 @@ def register_best_model():
 
     runs = client.search_runs(
         [exp.experiment_id],
-        filter_string="metrics.hit_rate_at_k >= 0 and params.chunk_size = 'article'",
+        filter_string="metrics.hit_rate_at_k >= 0",
         order_by=[
             "metrics.hit_rate_at_k DESC",
             "metrics.mrr_at_k DESC",

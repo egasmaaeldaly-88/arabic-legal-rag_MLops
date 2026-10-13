@@ -12,7 +12,7 @@ from arabic_legal_rag.model import get_embedding_model, load_vector_store
 from arabic_legal_rag.utils import load_config
 
 # 1. إعدادات الـ Tracking وتفعيل الـ Traces والـ System Metrics
-mlflow.set_tracking_uri("sqlite:///mlflow.db")
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"))
 mlflow.system_metrics.enable_system_metrics_logging()
 
 import mlflow.langchain
@@ -90,7 +90,7 @@ def compute_metrics(eval_dataset: list, top_k: int = 3):
 
 def run_evaluation():
     """Run the complete evaluation workflow and log parameters, metrics, artifacts, and model registry."""
-    mlflow.set_tracking_uri("sqlite:///mlflow.db")
+    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"))
     eval_path = Path("data/eval_dataset.json")
     if not eval_path.exists():
         raise FileNotFoundError(f"Evaluation dataset not found at {eval_path}")

@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 import mlflow
@@ -8,7 +9,7 @@ from arabic_legal_rag.utils import load_config
 
 
 def run_three_hf_model_families():
-    mlflow.set_tracking_uri("sqlite:///mlflow.db")
+    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"))
     mlflow.set_experiment("arabic-legal-rag-model-families")
     
     eval_path = Path("data/eval_dataset.json")

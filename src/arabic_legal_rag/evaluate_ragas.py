@@ -378,7 +378,7 @@ def main(argv=None) -> int:
         Path(args.answers_cache), use_cache=not args.no_cache,
     )
 
-    mlflow.set_tracking_uri(config["mlflow"]["tracking_uri"])
+    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", config["mlflow"]["tracking_uri"]))
     mlflow.set_experiment(config["mlflow"]["experiment_name"] + "_ragas")
 
     with mlflow.start_run(run_name=f"ragas_{args.metrics}_{len(questions)}q"):

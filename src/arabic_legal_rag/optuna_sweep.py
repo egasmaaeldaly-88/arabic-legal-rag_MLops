@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 import mlflow
@@ -35,7 +36,7 @@ def objective(trial):
         
         return metrics["hit_rate_at_k"]
 def run_optuna_sweep():
-    mlflow.set_tracking_uri("sqlite:///mlflow.db")
+    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"))
     mlflow.set_experiment("arabic-legal-rag-optuna-sweep")
     
     config = load_config("configs/config.yaml")
