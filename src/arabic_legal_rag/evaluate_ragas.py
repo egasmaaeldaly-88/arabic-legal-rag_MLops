@@ -110,8 +110,15 @@ def _save_cache(path: Path, cache: dict) -> None:
     tmp.replace(path)  # atomic: a crash never leaves a half-written cache
 
 
-def generate_with_retry(generator, question, items, arabic, attempts: int = 5) -> str:
-    """Call the generator, backing off on rate limits (HTTP 429) and 5xx errors."""
+MAX_RETRY_WAIT = 90  # seconds; a longer Retry-After means a daily quota, not a per-minute one
+
+
+def generate_with_retry(generator, question, items, arabic, attempts: int = 8) -> str:
+    """Call the generator, backing off on rate limits (HTTP 429) and 5xx errors.
+
+    Honors the provider's Retry-After header and logs the provider's explanation, so a
+    per-minute limit (wait and retry) can be told apart from a daily quota (fail fast).
+    """
     import httpx
 
     for attempt in range(1, attempts + 1):
@@ -119,10 +126,27 @@ def generate_with_retry(generator, question, items, arabic, attempts: int = 5) -
             return generator.generate(question, items, arabic)
         except httpx.HTTPStatusError as e:
             code = e.response.status_code
+            reason = e.response.text[:300].replace("\n", " ")
             if code not in (429, 500, 502, 503) or attempt == attempts:
+                logger.error(f"Generator HTTP {code}: {reason}")
                 raise
+
             wait = min(60, 5 * attempt)
-            logger.warning(f"Generator HTTP {code}; retrying in {wait}s ({attempt}/{attempts})")
+            retry_after = e.response.headers.get("retry-after")
+            if retry_after:
+                try:
+                    wait = float(retry_after) + 1
+                except ValueError:
+                    pass
+            if wait > MAX_RETRY_WAIT:
+                logger.error(
+                    f"Generator HTTP {code} asks to wait {wait:.0f}s (likely a daily quota): "
+                    f"{reason}"
+                )
+                raise
+            logger.warning(
+                f"Generator HTTP {code}; retrying in {wait:.0f}s ({attempt}/{attempts}): {reason}"
+            )
             time.sleep(wait)
     raise RuntimeError("unreachable")
 
@@ -290,11 +314,13 @@ def score_in_batches(
             cache[keys[i]] = entry
         _save_cache(scores_path, cache)  # progress is on disk before anything else happens
 
-        if failed == len(idxs):
-            raise RuntimeError(
+        if failed == len(idxs) and len(idxs) >= 3:  # tiny batches can be NaN legitimately
+            logger.error(
                 f"All {failed} judgments in batch {b} failed (likely the judge's rate limit "
-                "or daily quota). Scores so far are saved; wait and re-run to resume."
+                "or daily quota). Stopping; scores so far are saved. Wait, then re-run the "
+                "same command to resume."
             )
+            break
         if failed:
             logger.warning(f"{failed} question(s) got no score and will be retried next run")
 
