@@ -14,6 +14,7 @@ Usage (from the repo root):
 
 import argparse
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -78,7 +79,7 @@ def main() -> int:
     avg_embed = float(np.mean(embed_times))
     logger.info(f"Embedded {len(queries)} queries (avg {avg_embed:.3f}s each)")
 
-    mlflow.set_tracking_uri(config["mlflow"]["tracking_uri"])
+    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", config["mlflow"]["tracking_uri"]))
     mlflow.set_experiment(EXPERIMENT)
 
     for chunk_size, overlap, index_dir in indexes:

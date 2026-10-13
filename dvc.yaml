@@ -1,4 +1,4 @@
-stages:
+﻿stages:
   validate_corpus:
     cmd: python src/arabic_legal_rag/validate_corpus.py
     deps:
@@ -12,7 +12,8 @@ stages:
     deps:
       - export_to_onnx.py
     outs:
-      - models/onnx/
+      - models/onnx/:
+          push: false
 
   build_index:
     cmd: python src/arabic_legal_rag/ingest.py
