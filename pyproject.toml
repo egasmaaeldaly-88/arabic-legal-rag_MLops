@@ -32,6 +32,9 @@ dev = [
     "pytest-asyncio>=0.23",
     "dvc>=3.0.0",
     "optuna>=3.0.0",
+serve = [
+    "bentoml>=1.4"
+    ]
 ]
 eval = [
     "mlflow>=2.10.0",
@@ -64,7 +67,8 @@ omit = [
     "src/arabic_legal_rag/optuna_sweep.py",
     "src/arabic_legal_rag/train_families.py",
     "src/arabic_legal_rag/pipeline.py",
-    "src/arabic_legal_rag/chunking_sweep.py"
+    "src/arabic_legal_rag/chunking_sweep.py",
+    "src/arabic_legal_rag/bentoml_service.py",
 ]
 
 [tool.ruff.lint]
