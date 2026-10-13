@@ -1,13 +1,14 @@
 # src/arabic_legal_rag/evaluate.py
 
+import argparse
 import json
 import logging
 from pathlib import Path
-from typing import Dict
+
 import mlflow
 from ragas import evaluate as ragas_evaluate
-from ragas.metrics import faithfulness, answer_relevancy, context_precision
-import argparse
+from ragas.metrics import answer_relevancy, context_precision, faithfulness
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -74,7 +75,7 @@ def run_evaluation(
     top_k: int = 5,
     experiment_name: str = "arabic-legal-rag",
     tracking_uri: str = "http://localhost:5000"
-) -> Dict:
+) -> dict:
     """
     تشغيل تقييم RAGAS وتسجيله في MLflow
     """
@@ -130,7 +131,7 @@ def run_evaluation(
                 dataset_dict,
                 metrics=[
                     faithfulness(),
-                    relevance(),
+                    answer_relevancy(),
                     context_precision()
                 ],
                 llm_client="groq",
@@ -161,7 +162,7 @@ def run_evaluation(
             return eval_metrics
             
         except Exception as e:
-            logger.error(f"RAGAS evaluation failed: {e}", exc_info=True)
+            logger.exception("RAGAS evaluation failed")
             mlflow.log_param("error", str(e))
             return {
                 "error": str(e),
