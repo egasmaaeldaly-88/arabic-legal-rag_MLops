@@ -162,6 +162,49 @@ jobs:
         echo "empty question -> HTTP $code"
         [ "$code" = "422" ]
 
+    - name: Validate compose files
+      run: |
+        docker compose -f docker-compose.yml config -q
+        GROQ_API_KEY=dummy docker compose -f docker-compose.groq.yml config -q
+
+    - name: Build and smoke test the BentoML image
+      run: |
+        docker rm -f rag || true
+        docker build -f Dockerfile.bento \
+          --build-arg BASE_IMAGE=arabic-legal-rag:test \
+          -t arabic-legal-rag-bento:test .
+        docker run -d --name bento -p 8000:8000 \
+          -e GENERATOR_BACKEND=extractive arabic-legal-rag-bento:test
+
+        ok=0
+        for i in $(seq 1 60); do
+          if curl -sf http://localhost:8000/readyz > /dev/null; then ok=1; break; fi
+          sleep 5
+        done
+        if [ "$ok" != "1" ]; then
+          echo "BentoML never became ready"; docker logs bento; exit 1
+        fi
+
+        curl -sf -X POST http://localhost:8000/health \
+          -H "Content-Type: application/json" -d '{}' > bento_health.json
+        cat bento_health.json
+        curl -sf -X POST http://localhost:8000/ask \
+          -H "Content-Type: application/json; charset=utf-8" \
+          --data-binary '{"question":"ما هو التزام البائع بالضمان؟","top_k":3}' > bento_ask.json
+        cat bento_ask.json
+        python3 - <<'PY'
+        import json
+        h = json.load(open("bento_health.json"))
+        assert h["status"] == "healthy" and h["documents_indexed"] > 0, h
+        a = json.load(open("bento_ask.json"))
+        assert a["answer"].strip(), "empty answer"
+        assert a["sources"], "no sources returned"
+        PY
+
+    - name: BentoML logs (on failure)
+      if: failure()
+      run: docker logs bento || true
+
     - name: Container logs (on failure)
       if: failure()
       run: docker logs rag || true

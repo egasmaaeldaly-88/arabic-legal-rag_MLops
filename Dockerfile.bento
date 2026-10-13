@@ -1,0 +1,23 @@
+# BentoML serving image. Layers bentoml on top of the already-built API image,
+# so bge-m3, the FAISS index and the corpus are NOT rebuilt or re-downloaded.
+#
+# Default base = the CI image from GHCR. For a local base instead:
+#   docker build -t arabic-legal-rag-api:latest .
+#   $env:BASE_IMAGE = "arabic-legal-rag-api:latest"
+ARG BASE_IMAGE=ghcr.io/egasmaaeldaly-88/arabic-legal-rag:latest
+FROM ${BASE_IMAGE}
+
+USER root
+RUN pip install --no-cache-dir "bentoml>=1.4"
+USER appuser
+
+ENV BENTOML_DO_NOT_TRACK=True \
+    RAG_ROOT=/app
+
+EXPOSE 8000
+
+# BentoML exposes built-in GET /readyz (ready only after the models are loaded)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=300s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/readyz')"
+
+CMD ["bentoml", "serve", "arabic_legal_rag.bentoml_service:ArabicLegalRAG", "--host", "0.0.0.0", "--port", "8000"]

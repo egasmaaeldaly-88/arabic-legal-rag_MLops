@@ -1,0 +1,21 @@
+# Laptop / no-GPU variant: BentoML only, generation goes to Groq (free tier).
+#
+#   1) copy .env.example to .env and put your GROQ_API_KEY in it (.env is gitignored)
+#   2) docker compose -f docker-compose.groq.yml up --build
+services:
+  bento:
+    build:
+      context: .
+      dockerfile: Dockerfile.bento
+      args:
+        BASE_IMAGE: ${BASE_IMAGE:-ghcr.io/egasmaaeldaly-88/arabic-legal-rag:latest}
+    image: arabic-legal-rag-bento:latest
+    container_name: arabic_legal_rag_bento
+    ports:
+      - "8000:8000"
+    environment:
+      GENERATOR_BACKEND: openai
+      LLM_BASE_URL: https://api.groq.com/openai/v1
+      LLM_MODEL: ${GROQ_MODEL:-qwen/qwen3.8-27b}
+      LLM_API_KEY: ${GROQ_API_KEY:?Set GROQ_API_KEY in .env}
+    restart: unless-stopped

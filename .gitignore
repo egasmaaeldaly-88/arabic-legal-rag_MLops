@@ -18,3 +18,12 @@ serving/q.json
 
 mlruns.db
 serving/
+
+.env
+
+src/arabic_legal_rag/evaluate.py
+src/arabic_legal_rag/tags.py
+.env
+
+.coverage
+*.pyc

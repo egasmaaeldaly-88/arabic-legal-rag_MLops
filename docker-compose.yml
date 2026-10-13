@@ -1,18 +1,58 @@
+# Full stack: BentoML (retriever + API) + vLLM (generator).
+# vLLM needs an NVIDIA GPU + NVIDIA Container Toolkit -> run this on Colab/Kaggle/a GPU box.
+# On a laptop without GPU use:  docker compose -f docker-compose.groq.yml up
+#
+#   docker compose up --build
+#   BentoML  -> http://localhost:8000   (POST /ask, /ask_stream, /health; GET /readyz)
+#   vLLM     -> http://localhost:8001/v1
 services:
-  api:
+  vllm:
+    image: vllm/vllm-openai:v0.9.1
+    container_name: arabic_legal_rag_vllm
+    # Model name: keep in sync with LLM_MODEL below and with the README
+    command: >
+      --model ${LLM_MODEL:-Qwen/Qwen2.5-1.5B-Instruct}
+      --max-model-len 4096
+      --gpu-memory-utilization 0.85
+    ports:
+      - "8001:8000"
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      start_period: 300s   # first start downloads the model
+      retries: 20
+    restart: unless-stopped
+
+  bento:
     build:
       context: .
-      dockerfile: Dockerfile
-    image: arabic-legal-rag-api:latest
-    container_name: arabic_legal_rag_container
+      dockerfile: Dockerfile.bento
+      args:
+        BASE_IMAGE: ${BASE_IMAGE:-ghcr.io/egasmaaeldaly-88/arabic-legal-rag:latest}
+    image: arabic-legal-rag-bento:latest
+    container_name: arabic_legal_rag_bento
     ports:
       - "8000:8000"
     environment:
-      - PYTHONPATH=/app/src
+      GENERATOR_BACKEND: openai
+      LLM_BASE_URL: http://vllm:8000/v1     # service name, container-internal port
+      LLM_MODEL: ${LLM_MODEL:-Qwen/Qwen2.5-1.5B-Instruct}
+      LLM_API_KEY: EMPTY                    # vLLM has no auth by default
+    depends_on:
+      vllm:
+        condition: service_healthy
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 30s
-      timeout: 5s
-      start_period: 180s
-      retries: 3
+
+volumes:
+  hf_cache:
