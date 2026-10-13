@@ -30,7 +30,7 @@ dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pytest-asyncio>=0.23",
-    "dvc>=3.0.0",
+    "dvc[s3]>=3.0.0",
     "optuna>=3.0.0",
 
 ]
