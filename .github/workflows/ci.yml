@@ -50,15 +50,13 @@ jobs:
     - name: Run tests
       run: pytest -v
 
-    - name: Pull data from DagsHub safely
+    - name: Pull data from DagsHub
       env:
-        DAGSHUB_USER: ${{ secrets.DAGSHUB_USER }}
         DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
       run: |
-        dvc remote modify dagshub --local auth basic
-        dvc remote modify dagshub --local user "$DAGSHUB_USER"
-        dvc remote modify dagshub --local password "$DAGSHUB_TOKEN"
-        dvc pull data/egyptian_civil_code.pdf || echo "Some cache files missing, continuing pipeline..."
+        dvc remote modify dagshub --local access_key_id "$DAGSHUB_TOKEN"
+        dvc remote modify dagshub --local secret_access_key "$DAGSHUB_TOKEN"
+        dvc pull data/egyptian_civil_code.pdf.dvc
 
     - name: RAGAS faithfulness gate (Lightweight check for CI)
       env:
@@ -70,6 +68,10 @@ jobs:
         JUDGE_MODEL: openai/gpt-oss-120b
         JUDGE_MAX_TOKENS: "4000"
         JUDGE_EXTRA_BODY: '{"reasoning_effort":"low"}'
+        # --- إضافة إعدادات DagsHub و MLflow ---
+        MLFLOW_TRACKING_URI: https://dagshub.com/egasmaaeldaly-88/Dagshub_mlops.mlflow
+        MLFLOW_TRACKING_USERNAME: egasmaaeldaly-88
+        MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
       run: >
         python -m arabic_legal_rag.evaluate_ragas
         --num-questions 1 --metrics faithfulness --threshold 0.5
