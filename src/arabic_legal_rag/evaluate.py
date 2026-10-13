@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Dict
 import mlflow
 from ragas import evaluate as ragas_evaluate
-from ragas.metrics import faithfulness, answer_relevancy, context_precisionimport argparse
-
+from ragas.metrics import faithfulness, answer_relevancy, context_precision
+import argparse
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
