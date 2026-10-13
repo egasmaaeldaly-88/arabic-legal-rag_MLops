@@ -50,16 +50,15 @@ jobs:
     - name: Run tests
       run: pytest -v
 
-    - name: Configure DVC Remote Credentials and Pull (if needed)
+    - name: Configure DVC Remote Credentials and Pull
       env:
         DAGSHUB_USER: ${{ secrets.DAGSHUB_USER }}
         DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
       run: |
-        dvc remote modify dagshub endpointurl https://dagshub.com/egasmaaeldaly-88/Dagshub_mlops.s3
         dvc remote modify dagshub --local auth basic
         dvc remote modify dagshub --local user "$DAGSHUB_USER"
         dvc remote modify dagshub --local password "$DAGSHUB_TOKEN"
-        dvc pull || echo "DVC pull skipped or not required"
+        dvc pull
 
     - name: RAGAS faithfulness gate (Lightweight check for CI)
       env:
