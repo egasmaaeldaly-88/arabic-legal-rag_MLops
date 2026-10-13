@@ -1,8 +1,9 @@
 # src/experiments/run_experiment.py
 import json
-from pathlib import Path
-from embedding.indexer import create_index
+
 import mlflow
+from embedding.indexer import create_index
+
 
 def run_experiment(
     corpus_path: str = "data/corpus.json",
