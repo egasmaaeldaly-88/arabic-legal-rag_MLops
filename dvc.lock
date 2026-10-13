@@ -40,18 +40,18 @@ stages:
     deps:
     - path: data/vector_store_bgem3/
       hash: md5
-      md5: a988f148973783afb819ef73e618d590.dir
-      size: 6446853
+      md5: 619c737528a40dc37d42dcf27362ed1c.dir
+      size: 6571300
       nfiles: 2
     - path: src/arabic_legal_rag/eval.py
       hash: md5
-      md5: 15b198153585cb4842479826d18e54b9
-      size: 6210
+      md5: f8b4a55e15c042b46837f4054b3ba145
+      size: 6402
     outs:
-    - path: mlflow.db
+    - path: outputs/evaluation_report.json
       hash: md5
-      md5: d9ec4d8fe74117d434961e9c7c42f5ea
-      size: 1249280
+      md5: 00915d8bba72924d22ab6d9b076183fb
+      size: 241
   register_best_model:
     cmd: python src/arabic_legal_rag/register_best_model.py
     deps:
