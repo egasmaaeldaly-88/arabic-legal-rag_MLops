@@ -53,9 +53,10 @@ jobs:
     - name: Pull data from DagsHub
       env:
         DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.DAGSHUB_TOKEN }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.DAGSHUB_TOKEN }}
+        AWS_ENDPOINT_URL: https://dagshub.com/egasmaaeldaly-88/Dagshub_mlops.s3
       run: |
-        dvc remote modify dagshub --local access_key_id "$DAGSHUB_TOKEN"
-        dvc remote modify dagshub --local secret_access_key "$DAGSHUB_TOKEN"
         dvc pull data/egyptian_civil_code.pdf.dvc
 
     - name: RAGAS faithfulness gate (Lightweight check for CI)
