@@ -32,9 +32,7 @@ dev = [
     "pytest-asyncio>=0.23",
     "dvc>=3.0.0",
     "optuna>=3.0.0",
-serve = [
-    "bentoml>=1.4"
-    ]
+
 ]
 eval = [
     "mlflow>=2.10.0",
@@ -43,6 +41,9 @@ eval = [
     "langchain-openai>=0.3,<0.4",
 ]
 
+serve = [
+    "bentoml>=1.4",
+    ]
 [tool.setuptools.packages.find]
 where = ["src"]
 
