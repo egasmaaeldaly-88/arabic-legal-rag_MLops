@@ -88,17 +88,17 @@ stages:
     deps:
     - path: data/eval_dataset.json
       hash: md5
-      md5: 3da98b1d535ff48ea130691477d5dc2b
-      size: 3693
+      md5: 262e7e3530c1be12bda5ada7f789b63a
+      size: 9737
     - path: data/vector_store_bgem3/
       hash: md5
-      md5: a988f148973783afb819ef73e618d590.dir
-      size: 6446853
+      md5: a47fec455e6a72f0b43dfcc000bff620.dir
+      size: 6571300
       nfiles: 2
     - path: src/arabic_legal_rag/train_families.py
       hash: md5
-      md5: fb60c8726de86d4ad75919cbd7d124f6
-      size: 3990
+      md5: c763b106acfe66fedef7856758011891
+      size: 3948
     outs:
     - path: outputs/evaluation_report_Alternative_Model.json
       hash: md5
@@ -117,14 +117,25 @@ stages:
     deps:
     - path: data/eval_dataset.json
       hash: md5
-      md5: 3da98b1d535ff48ea130691477d5dc2b
-      size: 3693
+      md5: 262e7e3530c1be12bda5ada7f789b63a
+      size: 9737
     - path: src/arabic_legal_rag/optuna_sweep.py
       hash: md5
-      md5: 14dd063caaaad2c2fb132926a975d21e
-      size: 3044
+      md5: 8215229a3bfd1b41f2f025112bcf79b8
+      size: 2968
     outs:
     - path: outputs/optuna_best_params.json
       hash: md5
       md5: 2536cb12af46d459b5d78c4fca9342a6
       size: 20
+  chunking_sweep:
+    cmd: python src/arabic_legal_rag/chunking_sweep.py
+    deps:
+    - path: data/eval_dataset.json
+      hash: md5
+      md5: 262e7e3530c1be12bda5ada7f789b63a
+      size: 9737
+    - path: src/arabic_legal_rag/chunking_sweep.py
+      hash: md5
+      md5: 0779d3d6403a542079ef44940fc5a71f
+      size: 4946
