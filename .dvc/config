@@ -3,5 +3,4 @@
 ['remote "local_storage"']
     url = C:\study\Arabic RAG Mlops\dvc
 ['remote "dagshub"']
-    url = s3://dvc
-    endpointurl = https://dagshub.com/egasmaaeldaly-88/Dagshub_mlops.s3
+    url = https://dagshub.com/egasmaaeldaly-88/Dagshub_mlops.s3
