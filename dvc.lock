@@ -18,8 +18,8 @@ stages:
     deps:
     - path: data/legal_corpus_structured.json
       hash: md5
-      md5: eb1176610a14f09f1aa0aa5e966be97b
-      size: 1290228
+      md5: 907044affd06c6f6849ccc7db5617acc
+      size: 1282883
     - path: outputs/validation.flag
       hash: md5
       md5: 85453173e150860f327ea125eff08474
@@ -31,8 +31,8 @@ stages:
     outs:
     - path: data/vector_store_bgem3/
       hash: md5
-      md5: 7cbbc15dad1c966aefd0d74e7aef013a.dir
-      size: 6575686
+      md5: 1d5e7c854433a0a29079babb69829d4b.dir
+      size: 6560940
       nfiles: 2
   evaluate:
     cmd: python -m arabic_legal_rag.eval
@@ -76,8 +76,8 @@ stages:
     deps:
     - path: data/legal_corpus_structured.json
       hash: md5
-      md5: eb1176610a14f09f1aa0aa5e966be97b
-      size: 1290228
+      md5: 907044affd06c6f6849ccc7db5617acc
+      size: 1282883
     - path: src/arabic_legal_rag/validate_corpus.py
       hash: md5
       md5: f13501f53871293c1070baa709126522
@@ -152,10 +152,10 @@ stages:
       size: 2599703
     - path: src/arabic_legal_rag/build_corpus.py
       hash: md5
-      md5: f5863a88ebc685ac4c3a2bc22e1d91cb
-      size: 13924
+      md5: 68b0ac1617e89b447656ce0d2677af94
+      size: 16011
     outs:
     - path: data/legal_corpus_structured.json
       hash: md5
-      md5: eb1176610a14f09f1aa0aa5e966be97b
-      size: 1290228
+      md5: 907044affd06c6f6849ccc7db5617acc
+      size: 1282883

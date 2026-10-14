@@ -127,6 +127,37 @@ def clean_arabic_text(text: str) -> str:
     text = re.sub(r'\s+([\.،؛:])', r'\1', text)
     return text.strip(' .,،;')
 
+# ---------------------------------------------------------------------------
+# Structural headings (Book / Part / Chapter / numbered sub-sections) are printed
+# between articles in the PDF, so they end up glued to the END of the previous
+# article's text (e.g. Article 162 ends with "الفصل الثالث العمل غير المشروع ...").
+# They are not article content and pollute retrieval, so they are cut off.
+# Only matches inside the tail window, followed by an ordinal, are removed, so a
+# body use of the word ("الفصل في النزاع", "هذا الفصل") is never touched.
+# ---------------------------------------------------------------------------
+_ORDINAL = r"(?:الأول|الاول|الثاني|الثانى|الثالث|الرابع|الخامس|السادس|السابع|الثامن|التاسع|العاشر)"
+_STRUCT_HEADING = re.compile(
+    rf"\s(?:الكتاب|القسم|الباب|الفصل)\s+{_ORDINAL}(?![\u0621-\u064A])"
+)
+# single-digit numbered sub-heading at the very end, e.g. "٣ - المسئولية الناشئة عن الأشياء"
+_NUM_HEADING_TAIL = re.compile(r"\s[\u0660-\u0669\d]\s*[-\u2013]\s*[^.،:؛]{2,80}$")
+_HEADING_TAIL_WINDOW = 300
+
+
+def strip_trailing_headings(text: str) -> str:
+    """Remove book/part/chapter/section headings glued to the end of an article."""
+    cut = len(text)
+    for m in _STRUCT_HEADING.finditer(text):
+        if m.start() >= len(text) - _HEADING_TAIL_WINDOW:
+            cut = m.start()
+            break
+    text = text[:cut].rstrip()
+    m = _NUM_HEADING_TAIL.search(text)
+    if m and m.start() >= len(text) - 100:
+        text = text[: m.start()].rstrip()
+    return text
+
+
 def clean_english_text(text: str) -> str:
     """تنظيف النص الإنجليزي وإزالة إشارات الصفحات المعلقة."""
     if not text:
@@ -233,7 +264,9 @@ def build_complete_legal_corpus(pdf_path, output_json_path):
 
     for item in raw_articles:
         cleaned_lines = [clean_arabic_line(line) for line in item["body"].splitlines()]
-        full_clean_body = clean_arabic_text(" ".join(l for l in cleaned_lines if l.strip()))
+        full_clean_body = strip_trailing_headings(
+            clean_arabic_text(" ".join(l for l in cleaned_lines if l.strip()))
+        )
         if full_clean_body and item["num"] not in arabic_articles:
             arabic_articles[item["num"]] = {
                 "text_ar": full_clean_body,
