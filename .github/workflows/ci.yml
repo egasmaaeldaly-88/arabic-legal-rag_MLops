@@ -12,7 +12,7 @@ env:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true  
+  cancel-in-progress: true
 
 jobs:
   validate-and-test:
@@ -49,12 +49,6 @@ jobs:
     - name: Lint (fails the build on errors)
       run: ruff check src tests
 
-    - name: Rebuild index (validate corpus -> embed -> vector store)
-      run: dvc repro build_index
-
-    - name: Run tests
-      run: pytest -v
-
     - name: Pull data from DagsHub
       env:
         DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
@@ -64,7 +58,13 @@ jobs:
       run: |
         dvc pull data/egyptian_civil_code.pdf.dvc
 
-    - name: RAGAS faithfulness gate (Lightweight check for CI)
+    - name: Rebuild index (build corpus -> validate -> embed -> vector store)
+      run: dvc repro build_index
+
+    - name: Run tests
+      run: pytest -v
+
+    - name: RAGAS faithfulness gate (20 questions, runs on main or manual dispatch)
       if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
       env:
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
@@ -75,13 +75,13 @@ jobs:
         JUDGE_MODEL: openai/gpt-oss-120b
         JUDGE_MAX_TOKENS: "4000"
         JUDGE_EXTRA_BODY: '{"reasoning_effort":"low"}'
-        # --- إضافة إعدادات DagsHub و MLflow ---
         MLFLOW_TRACKING_URI: https://dagshub.com/egasmaaeldaly-88/Dagshub_mlops.mlflow
         MLFLOW_TRACKING_USERNAME: egasmaaeldaly-88
         MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
       run: >
         python -m arabic_legal_rag.evaluate_ragas
-        --num-questions 20 --batch-size 10 --threshold 0.75
+        --num-questions 20 --batch-size 5 --cooldown 20
+        --metrics faithfulness --threshold 0.75
 
     - name: Upload RAGAS report
       if: always()

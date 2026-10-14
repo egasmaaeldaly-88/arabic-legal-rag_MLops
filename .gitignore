@@ -27,3 +27,5 @@ src/arabic_legal_rag/tags.py
 
 .coverage
 *.pyc
+data/
+.cache/
