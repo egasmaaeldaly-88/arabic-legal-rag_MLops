@@ -32,6 +32,7 @@ dev = [
     "pytest-asyncio>=0.23",
     "dvc[s3]>=3.0.0",
     "optuna>=3.0.0",
+    "pdfplumber>=0.10",
 
 ]
 eval = [
