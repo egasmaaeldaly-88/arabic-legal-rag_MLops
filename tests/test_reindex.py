@@ -1,7 +1,8 @@
-from arabic_legal_rag.reindex import add_new_articles, indexed_article_numbers
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
+
+from arabic_legal_rag.reindex import add_new_articles, indexed_article_numbers
 
 
 def _doc(num, text="نص"):

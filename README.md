@@ -219,8 +219,51 @@ Locust on the same machine, so latency is bounded by CPU (bge-m3 query embedding
 
 ## Re-indexing and rollout
 
-> **TODO:** batch re-indexing script, tested with at least one new document.
+### Batch re-indexing
+
+`src/arabic_legal_rag/reindex.py` adds **new articles to the existing FAISS index** without rebuilding it:
+only the new documents are embedded (bge-m3), so it takes seconds instead of re-embedding the whole corpus.
+Articles whose number is already indexed are skipped, so running it twice never creates duplicates.
+
+```bash
+python -m arabic_legal_rag.reindex --input data/new_articles_sample.json
+```
+
+The input is a JSON list with the same schema as `data/legal_corpus_structured.json`.
+
+**Tested with a new document:** `data/new_articles_sample.json` contains one test article (No. 1150).
+
+```text
+run 1: documents_indexed: 1093 -> 1094 (added 1, skipped 0 already indexed)
+run 2: documents_indexed: 1094 -> 1094 (added 0, skipped 1 already indexed)
+```
+
+Unit tests (`tests/test_reindex.py`, fake embeddings) cover: only new articles are added, the new article is
+searchable, re-running is idempotent, batching, and duplicates inside the input file.
+
+Notes:
+- Restart the API / BentoML service afterwards so it loads the updated index.
+- `dvc repro build_index` rebuilds the index from `legal_corpus_structured.json`, so to keep a new article
+  permanently, also add it to that file. The test article is intentionally not part of the corpus.
+
 > **TODO:** canary rollout configuration (traffic split, promotion and rollback criteria).
+
+---
+
+## Known limitations
+
+- **Retrieval depends on wording.** Each article is embedded on its own text, so a question phrased far from the
+  article's legal wording can retrieve related articles instead of the right one. Example: *"المسؤولية عن العمل
+  الشخصي"* returns articles about liability for others' acts, while Article 163 (*"كل خطأ سبب ضررا للغير يلزم
+  من ارتكبه بالتعويض"*) is found when the question uses its wording (*"ما جزاء من يرتكب خطأ يسبب ضررا للغير؟"*).
+  The phrase is a section title in the Code, not part of the article text.
+- **Planned improvements (not implemented):** add each article's book/chapter/section titles to the text that is
+  embedded; rerank the top 15-20 candidates (e.g. `BAAI/bge-reranker-v2-m3`) before keeping the top 3. Both
+  should be measured on a set of colloquial questions (Hit@3 before/after) and logged to MLflow.
+- **PDF heading cleanup:** chapter and section headings printed between articles used to stay glued to the end
+  of the previous article (e.g. Article 162). `build_corpus.py` now removes them
+  (`strip_trailing_headings`, covered by `tests/test_strip_headings.py`). Text extracted from the PDF may still
+  contain small OCR-style errors, so spot-check before relying on exact wording.
 
 ---
 
@@ -241,6 +284,7 @@ Locust on the same machine, so latency is bounded by CPU (bge-m3 query embedding
 │   ├── generator.py               # extractive / OpenAI-compatible / transformers backends
 │   ├── retriever.py, rag.py       # retrieval + context building
 │   ├── ingest.py                  # embed + build FAISS index
+│   ├── reindex.py                 # add new articles to the existing index
 │   ├── build_corpus.py, validate_corpus.py
 │   ├── run_experiment.py, chunking_sweep.py, register_best_model.py
 │   └── evaluate_ragas.py          # RAGAS evaluation
@@ -264,5 +308,3 @@ uvicorn arabic_legal_rag.api:app --reload
 ```
 
 Never commit API keys, `.env`, `mlflow.db`, or `.pyc` files.
-
-
