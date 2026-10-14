@@ -1,0 +1,14 @@
+[
+  {
+    "article_number": 1150,
+    "book": "Test",
+    "chapter": "Re-indexing test",
+    "section": "Test",
+    "topic": "Test",
+    "text_ar": "مادة تجريبية لاختبار إعادة الفهرسة، وليست نصا قانونيا حقيقيا.",
+    "text_en": "Article 1150 This is a test article used only to verify batch re-indexing. It is not real legal text.",
+    "is_repealed": false,
+    "source_page": 0,
+    "citation": "Egyptian Civil Code, Article 1150 (TEST)"
+  }
+]

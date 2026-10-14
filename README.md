@@ -190,10 +190,27 @@ Image: `ghcr.io/egasmaaeldaly-88/arabic-legal-rag`
 
 ---
 
-## Load testing (Locust)
+>## Load testing (Locust)
 
-> **TODO:** run Locust with 50 concurrent users against BentoML and add the report to `reports/`
-> (locustfile, command, requests/sec, p50/p95 latency, failure rate).
+`locustfile.py` sends `POST /ask` (10:1 vs `POST /health`) with random questions from
+`data/eval_dataset.json` to the BentoML service. A request fails if the answer is empty or has no sources.
+
+```bash
+GENERATOR_BACKEND=local Qwen generator bentoml serve arabic_legal_rag.bentoml_service:ArabicLegalRAG --port 8000
+locust -f locustfile.py --headless -u 50 -r 5 -t 2m --host http://localhost:8000 \
+  --html reports/locust_report.html --csv reports/locust
+```
+
+**Result: 50 concurrent users, 2 minutes, 511 requests, 0 failures.**
+
+| Endpoint | Requests | p50 | p95 | p99 |
+| :--- | :---: | :---: | :---: | :---: |
+| POST /ask | 459 | 9.4 s | 13 s | 15 s |
+| POST /health | 52 | 25 ms | 2.1 s | 2.2 s |
+
+Throughput ≈ 4.3 req/s. Setup: Windows laptop (Ryzen 7 PRO 5850U, no GPU), extractive backend, server and
+Locust on the same machine, so latency is bounded by CPU (bge-m3 query embedding). Full report:
+`reports/locust_report.html`.
 
 ## Monitoring
 
@@ -247,3 +264,5 @@ uvicorn arabic_legal_rag.api:app --reload
 ```
 
 Never commit API keys, `.env`, `mlflow.db`, or `.pyc` files.
+
+
