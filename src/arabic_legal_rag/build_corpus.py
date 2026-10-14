@@ -239,6 +239,17 @@ def build_complete_legal_corpus(pdf_path, output_json_path):
                 "text_ar": full_clean_body,
                 "source_page": item["page"],
             }
+        # Source-PDF defect: the Arabic heading and paragraph 1 of Article 1022 are missing,
+    # and its paragraphs 2-3 are printed under Article 1021.
+    ART_1022_AR_P1 = ""  # paste paragraph 1 from the official Arabic text
+    if 1021 in arabic_articles and 1022 not in arabic_articles:
+        head, sep, tail = arabic_articles[1021]["text_ar"].partition(" ٢ ")
+        if sep:
+            arabic_articles[1021]["text_ar"] = head.strip()
+            arabic_articles[1022] = {
+                "text_ar": (f"١ {ART_1022_AR_P1} " if ART_1022_AR_P1 else "") + "٢ " + tail.strip(),
+                "source_page": arabic_articles[1021]["source_page"],
+            }        
 
     # Repealed ranges (e.g. 54-80) have no text; record them as flagged placeholders
     for first, last in sorted(repealed_ranges):
@@ -265,7 +276,7 @@ def build_complete_legal_corpus(pdf_path, output_json_path):
         text_ar_val = item["text_ar"]
         page_num = item["source_page"]
 
-        en_pattern = rf"((?:Article|Art\.?)\s+{art_num}\b.*?)(?=(?:Article|Art\.?)\s+\d+|\Z)"
+        en_pattern = rf"((?:Article|Art\.?)\s*{art_num}\b.*?)(?=(?:Article|Art\.?)\s*\d+|\Z)"
         en_match = re.search(en_pattern, english_pages_blob[last_search_pos:], re.IGNORECASE | re.DOTALL)
         
         if en_match:

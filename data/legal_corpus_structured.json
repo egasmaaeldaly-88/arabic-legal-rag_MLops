@@ -12301,11 +12301,23 @@
     "chapter": "Special Contracts",
     "section": "General Framework",
     "topic": "Special Contract Provisions",
-    "text_ar": "١ لا يلزم مالك العقار المرتفق به أن يقوم بأي عمل لمصلحة العاقر المرتفق إلا أن يكون عملا إضافياً يقتضيه استعمال الارتفاق على الوجه المألوف ما لم يشترط غير ذلك. ٢ فإذا كان مالك العاقر المرتفق به هو المكلف بأن يقوم بتلك الأعمال على نفقته، كان له دائماً أن يتخلص من هذا التكليف بالتخلي عن العقار المرتفق به كله أو بعضه لمالك العقار المرتفق. ٣ وإذا كانت الأعمال نافعة أيضاً لمالك العاقر المرتفق به، كانت نفقة الصيانة على الطرفين كل بنسبة ما يعود عليه من الفائدة",
-    "text_en": "Article 1021 In the absence of an agreement to the contrary, the owner of the servient tenement is under no obligation to carry out work for the benefit of the dominant tenement, unless it is an accessory work necessitated by the normal use of the servitude. Article1022 In the absence of an agreement to the contrary, the cost of the necessary works for the use and preservation of the servitude must be borne by the owner of the dominant tenement. If the owner of the servient tenement is responsible for carrying out these works at his own cost, he has always the right to free himself of this burden by abandoning the servient tenement wholly or in part to the owner of the dominant property. If the works also benefit the owner of the servient tenement, the cost of upkeep falls on the two parties in proportion to the profit derived by each of them.",
+    "text_ar": "١ لا يلزم مالك العقار المرتفق به أن يقوم بأي عمل لمصلحة العاقر المرتفق إلا أن يكون عملا إضافياً يقتضيه استعمال الارتفاق على الوجه المألوف ما لم يشترط غير ذلك.",
+    "text_en": "Article 1021 In the absence of an agreement to the contrary, the owner of the servient tenement is under no obligation to carry out work for the benefit of the dominant tenement, unless it is an accessory work necessitated by the normal use of the servitude.",
     "is_repealed": false,
     "source_page": 147,
     "citation": "Egyptian Civil Code, Article 1021"
+  },
+  {
+    "article_number": 1022,
+    "book": "Named Contracts",
+    "chapter": "Special Contracts",
+    "section": "General Framework",
+    "topic": "Special Contract Provisions",
+    "text_ar": "٢ فإذا كان مالك العاقر المرتفق به هو المكلف بأن يقوم بتلك الأعمال على نفقته، كان له دائماً أن يتخلص من هذا التكليف بالتخلي عن العقار المرتفق به كله أو بعضه لمالك العقار المرتفق. ٣ وإذا كانت الأعمال نافعة أيضاً لمالك العاقر المرتفق به، كانت نفقة الصيانة على الطرفين كل بنسبة ما يعود عليه من الفائدة",
+    "text_en": "Article1022 In the absence of an agreement to the contrary, the cost of the necessary works for the use and preservation of the servitude must be borne by the owner of the dominant tenement. If the owner of the servient tenement is responsible for carrying out these works at his own cost, he has always the right to free himself of this burden by abandoning the servient tenement wholly or in part to the owner of the dominant property. If the works also benefit the owner of the servient tenement, the cost of upkeep falls on the two parties in proportion to the profit derived by each of them.",
+    "is_repealed": false,
+    "source_page": 147,
+    "citation": "Egyptian Civil Code, Article 1022"
   },
   {
     "article_number": 1023,

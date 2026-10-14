@@ -1,4 +1,13 @@
 ﻿stages:
+  build_corpus:
+    cmd: python src/arabic_legal_rag/build_corpus.py
+    deps:
+      - data/egyptian_civil_code.pdf
+      - src/arabic_legal_rag/build_corpus.py
+    outs:
+      - data/legal_corpus_structured.json:
+          cache: false
+
   validate_corpus:
     cmd: python src/arabic_legal_rag/validate_corpus.py
     deps:
@@ -22,18 +31,18 @@
       - data/legal_corpus_structured.json
       - outputs/validation.flag
     outs:
-      - data/vector_store_bgem3/ 
+      - data/vector_store_bgem3/
 
   train_model_families:
-      cmd: python -m src.arabic_legal_rag.train_families
-      deps:
-        - src/arabic_legal_rag/train_families.py
-        - data/eval_dataset.json
-        - data/vector_store_bgem3/
-      outs:
-        - outputs/evaluation_report_Baseline_MiniLM.json
-        - outputs/evaluation_report_Alternative_Model.json
-        - outputs/evaluation_report_Optimal_BGE_M3.json
+    cmd: python -m src.arabic_legal_rag.train_families
+    deps:
+      - src/arabic_legal_rag/train_families.py
+      - data/eval_dataset.json
+      - data/vector_store_bgem3/
+    outs:
+      - outputs/evaluation_report_Baseline_MiniLM.json
+      - outputs/evaluation_report_Alternative_Model.json
+      - outputs/evaluation_report_Optimal_BGE_M3.json
 
   optuna_sweep:
     cmd: python -m src.arabic_legal_rag.optuna_sweep
@@ -41,12 +50,13 @@
       - src/arabic_legal_rag/optuna_sweep.py
       - data/eval_dataset.json
     outs:
-      - outputs/optuna_best_params.json  
+      - outputs/optuna_best_params.json
 
   evaluate:
     cmd: python -m arabic_legal_rag.eval
     deps:
       - src/arabic_legal_rag/eval.py
+      - data/eval_dataset.json
       - data/vector_store_bgem3/
     outs:
       - outputs/evaluation_report.json

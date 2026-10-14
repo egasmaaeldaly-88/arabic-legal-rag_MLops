@@ -18,8 +18,8 @@ stages:
     deps:
     - path: data/legal_corpus_structured.json
       hash: md5
-      md5: 9bfaafe2b72b25026e4ef8ae0d51544e
-      size: 1289894
+      md5: eb1176610a14f09f1aa0aa5e966be97b
+      size: 1290228
     - path: outputs/validation.flag
       hash: md5
       md5: 85453173e150860f327ea125eff08474
@@ -31,16 +31,20 @@ stages:
     outs:
     - path: data/vector_store_bgem3/
       hash: md5
-      md5: a47fec455e6a72f0b43dfcc000bff620.dir
-      size: 6571300
+      md5: 7cbbc15dad1c966aefd0d74e7aef013a.dir
+      size: 6575686
       nfiles: 2
   evaluate:
     cmd: python -m arabic_legal_rag.eval
     deps:
+    - path: data/eval_dataset.json
+      hash: md5
+      md5: 262e7e3530c1be12bda5ada7f789b63a
+      size: 9737
     - path: data/vector_store_bgem3/
       hash: md5
-      md5: a47fec455e6a72f0b43dfcc000bff620.dir
-      size: 6571300
+      md5: 7cbbc15dad1c966aefd0d74e7aef013a.dir
+      size: 6575686
       nfiles: 2
     - path: src/arabic_legal_rag/eval.py
       hash: md5
@@ -49,15 +53,15 @@ stages:
     outs:
     - path: outputs/evaluation_report.json
       hash: md5
-      md5: 0b6cc5a649bcb02a6074e804367838bf
-      size: 241
+      md5: 53d01906eec3ebf853b31673e9f1223e
+      size: 240
   register_best_model:
     cmd: python src/arabic_legal_rag/register_best_model.py
     deps:
     - path: outputs/evaluation_report.json
       hash: md5
-      md5: 0b6cc5a649bcb02a6074e804367838bf
-      size: 241
+      md5: 53d01906eec3ebf853b31673e9f1223e
+      size: 240
     - path: src/arabic_legal_rag/register_best_model.py
       hash: md5
       md5: de841bb15c0f6a95c7b27b052927c708
@@ -65,15 +69,15 @@ stages:
     outs:
     - path: outputs/best_config_registered.flag
       hash: md5
-      md5: f249272a8e24ad130136e8e200f7dca2
+      md5: f3fa35f62060f9533689e7669d03870d
       size: 69
   validate_corpus:
     cmd: python src/arabic_legal_rag/validate_corpus.py
     deps:
     - path: data/legal_corpus_structured.json
       hash: md5
-      md5: 9bfaafe2b72b25026e4ef8ae0d51544e
-      size: 1289894
+      md5: eb1176610a14f09f1aa0aa5e966be97b
+      size: 1290228
     - path: src/arabic_legal_rag/validate_corpus.py
       hash: md5
       md5: f13501f53871293c1070baa709126522
@@ -139,3 +143,19 @@ stages:
       hash: md5
       md5: 0779d3d6403a542079ef44940fc5a71f
       size: 4946
+  build_corpus:
+    cmd: python src/arabic_legal_rag/build_corpus.py
+    deps:
+    - path: data/egyptian_civil_code.pdf
+      hash: md5
+      md5: 5086ef5f16f15d856278db943e58e948
+      size: 2599703
+    - path: src/arabic_legal_rag/build_corpus.py
+      hash: md5
+      md5: f5863a88ebc685ac4c3a2bc22e1d91cb
+      size: 13924
+    outs:
+    - path: data/legal_corpus_structured.json
+      hash: md5
+      md5: eb1176610a14f09f1aa0aa5e966be97b
+      size: 1290228
