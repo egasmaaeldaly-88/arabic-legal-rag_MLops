@@ -15,7 +15,7 @@ import argparse
 import json
 import os
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 DEFAULT_THRESHOLD = 0.80
@@ -57,7 +57,7 @@ def check(summary: dict, threshold: float, webhook_url: str | None, log_path: Pa
     print(message)
     if log_path is not None:
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now(UTC).isoformat(timespec="seconds")
+        stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(f"{stamp} {message}\n")
     if webhook_url:
