@@ -1,0 +1,30 @@
+# Canary rollout: two versions of the BentoML service behind an nginx gateway.
+#   STABLE_IMAGE: current production image      CANARY_IMAGE: the new version under test
+#
+#   STABLE_IMAGE=arabic-legal-rag-bento:stable CANARY_IMAGE=arabic-legal-rag-bento:canary \
+#     docker compose -f deploy/canary/docker-compose.canary.yml up -d
+#
+# Clients call http://localhost:8080 (same API as the single service).
+services:
+  bento_stable:
+    image: ${STABLE_IMAGE:-arabic-legal-rag-bento:latest}
+    environment:
+      GENERATOR_BACKEND: ${GENERATOR_BACKEND:-extractive}
+    restart: unless-stopped
+
+  bento_canary:
+    image: ${CANARY_IMAGE:-arabic-legal-rag-bento:latest}
+    environment:
+      GENERATOR_BACKEND: ${GENERATOR_BACKEND:-extractive}
+    restart: unless-stopped
+
+  gateway:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - bento_stable
+      - bento_canary
+    restart: unless-stopped
