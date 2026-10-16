@@ -214,10 +214,28 @@ Locust on the same machine, so latency is bounded by CPU (bge-m3 query embedding
 
 ## Monitoring
 
-> **TODO:** Langfuse (self-hosted): one trace with spans per `/ask`, with the RAGAS faithfulness score attached.
-> **TODO:** alert when faithfulness < 0.80 (notification channel and how it is triggered).
+Faithfulness alert (< 0.80)
+
+After each RAGAS run, evaluate_ragas.py writes reports/ragas_summary.json. The alert check reads it:
+
+bash
+python -m arabic_legal_rag.alerting                    # threshold 0.80
+python -m arabic_legal_rag.alerting --threshold 0.99   # force an alert to test it
+
+If faithfulness < 0.80 it prints ALERT: ..., appends to reports/alerts.log, and POSTs to a Discord or Slack incoming webhook when ALERT_WEBHOOK_URL is set (keep the URL secret, never commit it). Exit code 2 means an alert fired, so CI can notify or fail on it.
+
+TODO: Langfuse (self-hosted): one trace with spans per /ask, with the RAGAS faithfulness score attached.
 
 ## Re-indexing and rollout
+Batch re-indexing
+
+reindex.py adds new articles to the existing FAISS index without rebuilding it. Only the new articles are embedded; articles whose number is already indexed are skipped, so it is safe to re-run.
+
+bash
+python -m arabic_legal_rag.reindex --input data/new_articles_sample.json
+# documents_indexed: 1093 -> 1094 (added 1, skipped 0 already indexed)
+
+Restart the API/BentoML service afterwards so it loads the updated index. Tested in tests/test_reindex.py and with one new document (/health shows documents_indexed going up by 1). Note: dvc repro build_index rebuilds from data/legal_corpus_structured.json, so add permanent articles to that file too.
 
 ### Batch re-indexing
 
@@ -247,6 +265,79 @@ Notes:
   permanently, also add it to that file. The test article is intentionally not part of the corpus.
 
 > **TODO:** canary rollout configuration (traffic split, promotion and rollback criteria).
+
+### Canary rollout
+
+Configuration: deploy/canary/ (nginx gateway with weighted upstreams, 90% stable / 10% canary).
+
+bash
+STABLE_IMAGE=arabic-legal-rag-bento:stable CANARY_IMAGE=arabic-legal-rag-bento:canary \
+  docker compose -f deploy/canary/docker-compose.canary.yml up -d
+
+Clients call http://localhost:8080; the X-Served-By response header shows which version answered.
+
+Stage	Canary traffic	Move to the next stage when
+1	10% (weights 9:1)	at least 200 canary requests and all checks below pass
+2	50% (weights 1:1)	same checks hold for another 200 requests
+3	100%	canary becomes the new stable
+
+Promotion checks (canary vs stable): error rate no more than 0.5 pp higher; p95 latency within 1.2x; RAGAS faithfulness >= 0.80 on the 20-question set and no more than 0.03 below stable.
+
+Rollback: if any check fails or the faithfulness alert fires, mark the canary server down in nginx.conf and run docker compose -f deploy/canary/docker-compose.canary.yml exec gateway nginx -s reload. Traffic returns to stable immediately; no rebuild needed.
+
+## Observability: Langfuse traces
+
+Every `/ask` creates a [Langfuse](https://langfuse.com) trace with spans:
+
+```
+ask                  input = question, output = answer + cited articles
+├── retrieve         cited articles, number of documents
+└── generate         generation: model name, context passed to the LLM, answer
+```
+
+The RAGAS evaluation (`python -m arabic_legal_rag.evaluate_ragas`) creates the same trace for
+every evaluation question and then attaches each metric (faithfulness, answer_relevancy,
+context_precision, context_recall) to that question's trace as a Langfuse score.
+
+### Run Langfuse (self-hosted)
+
+Langfuse is not part of this repo; run its official compose file next to the project:
+
+```powershell
+cd C:\
+git clone --depth 1 https://github.com/langfuse/langfuse.git
+cd C:\langfuse
+docker compose up          # UI at http://localhost:3000
+```
+
+Create an account, an organization and a project, then create API keys
+(Settings -> API Keys).
+
+### Connect the app
+
+Keys are never stored in files; set them in the shell that starts the app:
+
+```powershell
+pip install -e ".[tracing]"
+$env:LANGFUSE_HOST = "http://localhost:3000"
+$env:LANGFUSE_PUBLIC_KEY = "<public key>"
+$env:LANGFUSE_SECRET_KEY = "<secret key>"
+uvicorn arabic_legal_rag.api:app --port 8000      # or: bentoml serve ...
+```
+
+Without these variables (or without the `langfuse` package) tracing is switched off and the
+API behaves exactly as before. `LANGFUSE_ENABLED=0` forces it off.
+
+When the API runs in Docker, point it at the host with
+`LANGFUSE_HOST=http://host.docker.internal:3000`.
+
+### Notes
+
+- `/ask/stream` (and BentoML `/ask_stream`) record their trace when the stream finishes; the
+  durations (retrieve, time to first token, total) are stored in the trace metadata.
+- `reports/ragas_results.csv` has a `langfuse_trace_id` column linking each question to its trace.
+- Screenshot of a trace with spans and the faithfulness score: `reports/langfuse_trace.png`.
+
 
 ---
 
