@@ -45,6 +45,9 @@ eval = [
 serve = [
     "bentoml>=1.4",
     ]
+tracing = [
+    "langfuse>=3.0",
+]
 [tool.setuptools.packages.find]
 where = ["src"]
 

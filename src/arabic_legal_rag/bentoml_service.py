@@ -23,12 +23,15 @@ from __future__ import annotations
 
 import asyncio
 import os
+import time
 from collections.abc import AsyncGenerator, Iterator
 from pathlib import Path
 
 import bentoml
 from bentoml.exceptions import InvalidArgument
 from pydantic import BaseModel
+
+from arabic_legal_rag import tracing
 
 MAX_TOP_K = 10
 # Repo root (src/arabic_legal_rag/bentoml_service.py -> parents[2]), so the service works
@@ -107,14 +110,35 @@ class ArabicLegalRAG:
         from arabic_legal_rag.rag import NOT_FOUND_AR
 
         question = _clean_question(question)
-        items, sources, arabic = await asyncio.to_thread(
-            self._prepare, question, _clamp_top_k(top_k)
-        )
-        if not items:
-            return AskResponse(answer=NOT_FOUND_AR, sources=[])
+        k = _clamp_top_k(top_k)
+        # One Langfuse trace per request (no-op if Langfuse is off). asyncio.to_thread copies
+        # the context, so the worker-thread work still nests under these spans.
+        with tracing.span(
+            "ask",
+            tags=["bentoml", "ask"],
+            input={"question": question, "top_k": k},
+            metadata={"endpoint": "bentoml:/ask"},
+        ) as root:
+            with tracing.span("retrieve", input={"question": question, "top_k": k}) as r:
+                items, sources, arabic = await asyncio.to_thread(self._prepare, question, k)
+                tracing.safe_update(r, output={"sources": sources, "documents": len(items)})
 
-        answer = await asyncio.to_thread(self.generator.generate, question, items, arabic)
-        return AskResponse(answer=answer, sources=sources)
+            if not items:
+                tracing.safe_update(root, output={"answer": NOT_FOUND_AR, "sources": []})
+                return AskResponse(answer=NOT_FOUND_AR, sources=[])
+
+            with tracing.span(
+                "generate",
+                as_type="generation",
+                model=self.generator.model_name,
+                input={"question": question, "contexts": items},
+                metadata={"backend": self.generator.name},
+            ) as g:
+                answer = await asyncio.to_thread(self.generator.generate, question, items, arabic)
+                tracing.safe_update(g, output=answer)
+
+            tracing.safe_update(root, output={"answer": answer, "sources": sources})
+            return AskResponse(answer=answer, sources=sources)
 
     @bentoml.api
     async def ask_stream(self, question: str, top_k: int = 3) -> AsyncGenerator[str, None]:
@@ -122,13 +146,37 @@ class ArabicLegalRAG:
         from arabic_legal_rag.rag import NOT_FOUND_AR
 
         question = _clean_question(question)
+        t0 = time.perf_counter()
         items, sources, arabic = await asyncio.to_thread(
             self._prepare, question, _clamp_top_k(top_k)
         )
+        retrieve_ms = round((time.perf_counter() - t0) * 1000)
         if not items:
+            tracing.record_ask_trace(
+                question, [], NOT_FOUND_AR, model=self.generator.model_name,
+                endpoint="bentoml:/ask_stream", timings_ms={"retrieve": retrieve_ms},
+                tags=["bentoml", "ask_stream"],
+            )
             yield NOT_FOUND_AR
             return
 
+        parts: list[str] = []
+        first_token_ms = None
+        t_gen = time.perf_counter()
         async for token in _aiter(self.generator.stream(question, items, arabic)):
+            if first_token_ms is None:
+                first_token_ms = round((time.perf_counter() - t_gen) * 1000)
+            parts.append(token)
             yield token
+        # A span can't stay open across yields, so the trace is recorded once streaming ends.
+        tracing.record_ask_trace(
+            question, sources, "".join(parts), model=self.generator.model_name,
+            endpoint="bentoml:/ask_stream",
+            timings_ms={
+                "retrieve": retrieve_ms,
+                "time_to_first_token": first_token_ms,
+                "generate_total": round((time.perf_counter() - t_gen) * 1000),
+            },
+            tags=["bentoml", "ask_stream"],
+        )
         yield "\n\nSources: " + ", ".join(sources)

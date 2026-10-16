@@ -54,6 +54,7 @@ from pathlib import Path
 
 from loguru import logger
 
+from arabic_legal_rag import tracing
 from arabic_legal_rag.generator import build_generator
 from arabic_legal_rag.rag import NOT_FOUND_AR, is_arabic, prepare_context
 from arabic_legal_rag.utils import load_clean_corpus, load_config
@@ -151,26 +152,63 @@ def generate_with_retry(generator, question, items, arabic, attempts: int = 8) -
     raise RuntimeError("unreachable")
 
 
-def collect_rows(questions, retriever, generator, article_texts, cache_path: Path, use_cache=True):
-    """Retrieve + generate an answer for each question; returns RAGAS-style rows."""
+def collect_rows(
+    questions,
+    retriever,
+    generator,
+    article_texts,
+    cache_path: Path,
+    use_cache=True,
+    trace_ids: list | None = None,
+    run_name: str | None = None,
+):
+    """Retrieve + generate an answer for each question; returns RAGAS-style rows.
+
+    If Langfuse is configured, every question also gets a trace (ask -> retrieve + generate)
+    and its trace id is appended to ``trace_ids`` (same order as the questions), so the
+    RAGAS scores can be attached to the right trace afterwards. ``None`` entries mean
+    tracing is off.
+    """
     cache = _load_cache(cache_path) if use_cache else {}
     rows = {"user_input": [], "response": [], "retrieved_contexts": [], "reference": []}
 
     for i, q in enumerate(questions, 1):
         question = q["query"]
-        items, _sources, arabic = prepare_context(retriever, question)
-        key = _cache_key(generator, question, items)
+        with tracing.span(
+            "ask",
+            tags=["ragas-eval"] + ([run_name] if run_name else []),
+            input={"question": question},
+            metadata={"endpoint": "ragas-eval", "expected_articles": q.get("expected_articles")},
+        ) as root:
+            with tracing.span("retrieve", input={"question": question}) as r:
+                items, sources, arabic = prepare_context(retriever, question)
+                tracing.safe_update(r, output={"sources": sources, "documents": len(items)})
+            key = _cache_key(generator, question, items)
 
-        if key in cache:
-            answer = cache[key]
-            logger.info(f"[{i}/{len(questions)}] cached answer")
-        else:
-            logger.info(f"[{i}/{len(questions)}] generating answer")
-            answer = (
-                generate_with_retry(generator, question, items, arabic) if items else NOT_FOUND_AR
-            )
-            cache[key] = answer
-            _save_cache(cache_path, cache)
+            with tracing.span(
+                "generate",
+                as_type="generation",
+                model=generator.model_name,
+                input={"question": question, "contexts": items},
+                metadata={"backend": generator.name, "cached": key in cache},
+            ) as g:
+                if key in cache:
+                    answer = cache[key]
+                    logger.info(f"[{i}/{len(questions)}] cached answer")
+                else:
+                    logger.info(f"[{i}/{len(questions)}] generating answer")
+                    answer = (
+                        generate_with_retry(generator, question, items, arabic)
+                        if items
+                        else NOT_FOUND_AR
+                    )
+                    cache[key] = answer
+                    _save_cache(cache_path, cache)
+                tracing.safe_update(g, output=answer)
+
+            tracing.safe_update(root, output={"answer": answer, "sources": sources})
+            if trace_ids is not None:
+                trace_ids.append(tracing.trace_id_of(root))
 
         rows["user_input"].append(question)
         rows["response"].append(answer)
@@ -373,9 +411,11 @@ def main(argv=None) -> int:
     judge_model = os.getenv("JUDGE_MODEL", DEFAULT_JUDGE_MODEL)
     names = _metrics_for(args.metrics)
 
+    trace_ids: list = []  # Langfuse trace id per question (None when tracing is off)
     rows = collect_rows(
         questions, retriever, generator, article_texts,
         Path(args.answers_cache), use_cache=not args.no_cache,
+        trace_ids=trace_ids, run_name=f"ragas_{args.metrics}_{len(questions)}q",
     )
 
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", config["mlflow"]["tracking_uri"]))
@@ -415,7 +455,16 @@ def main(argv=None) -> int:
                          "re-run the same command to resume.")
             raise
 
+        # Attach every RAGAS score to the Langfuse trace of the question it judged.
+        for trace_id, scores in zip(trace_ids, per_question):
+            for name in names:
+                tracing.score_trace(trace_id, name, scores.get(name),
+                                    comment=f"RAGAS, judge={judge_model}")
+        tracing.flush()
+
         df = pd.DataFrame(rows)
+        if any(trace_ids):
+            df["langfuse_trace_id"] = trace_ids
         for name in names:
             df[name] = pd.to_numeric(pd.Series([s.get(name) for s in per_question]),
                                      errors="coerce")

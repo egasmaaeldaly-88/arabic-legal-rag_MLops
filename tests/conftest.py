@@ -7,6 +7,7 @@ for _var in (
 ):
     os.environ.pop(_var, None)
 os.environ["GENERATOR_BACKEND"] = "extractive"
+os.environ["LANGFUSE_ENABLED"] = "0"  # tests never send traces to Langfuse
 
 import pytest
 from fastapi.testclient import TestClient

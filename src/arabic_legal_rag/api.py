@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, status
@@ -8,6 +9,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from arabic_legal_rag import tracing
 from arabic_legal_rag.generator import build_generator
 from arabic_legal_rag.rag import NOT_FOUND_AR, is_arabic, prepare_context  # noqa: F401
 from arabic_legal_rag.retriever import get_legal_retriever
@@ -136,15 +138,39 @@ def _prepare(question: str):
 
 @app.post("/ask", response_model=QueryResponse)
 def ask_legal_question(request: QueryRequest):
-    question, items, sources, arabic = _prepare(request.question)
-    if not items:
-        return QueryResponse(answer=NOT_FOUND_AR, sources=[])
-    try:
-        answer = get_generator().generate(question, items, arabic)
-    except Exception as e:
-        logger.error(f"Error during generation: {e}")
-        raise HTTPException(status_code=500, detail="Answer generation failed.")
-    return QueryResponse(answer=answer, sources=sources)
+    # One Langfuse trace per request: ask -> retrieve + generate (no-op if Langfuse is off).
+    with tracing.span(
+        "ask",
+        tags=["ask"],
+        input={"question": request.question},
+        metadata={"endpoint": "/ask"},
+    ) as root:
+        with tracing.span("retrieve", input={"question": request.question}) as r:
+            question, items, sources, arabic = _prepare(request.question)
+            tracing.safe_update(r, output={"sources": sources, "documents": len(items)})
+
+        if not items:
+            tracing.safe_update(root, output={"answer": NOT_FOUND_AR, "sources": []})
+            return QueryResponse(answer=NOT_FOUND_AR, sources=[])
+
+        gen = get_generator()
+        with tracing.span(
+            "generate",
+            as_type="generation",
+            model=gen.model_name,
+            input={"question": question, "contexts": items},
+            metadata={"backend": gen.name},
+        ) as g:
+            try:
+                answer = gen.generate(question, items, arabic)
+            except Exception as e:
+                logger.error(f"Error during generation: {e}")
+                tracing.safe_update(g, level="ERROR", status_message=str(e)[:200])
+                raise HTTPException(status_code=500, detail="Answer generation failed.")
+            tracing.safe_update(g, output=answer)
+
+        tracing.safe_update(root, output={"answer": answer, "sources": sources})
+        return QueryResponse(answer=answer, sources=sources)
 
 
 def _sse(payload: dict) -> str:
@@ -154,20 +180,41 @@ def _sse(payload: dict) -> str:
 @app.post("/ask/stream")
 def ask_legal_question_stream(request: QueryRequest):
     """Server-Sent Events: a `sources` event, then `token` events, then `done`."""
+    t0 = time.perf_counter()
     question, items, sources, arabic = _prepare(request.question)
+    retrieve_ms = round((time.perf_counter() - t0) * 1000)
 
     def event_stream():
+        parts: list[str] = []
+        first_token_ms = None
+        t_gen = time.perf_counter()
         yield _sse({"type": "sources", "sources": sources})
         if not items:
+            parts.append(NOT_FOUND_AR)
             yield _sse({"type": "token", "text": NOT_FOUND_AR})
-            yield _sse({"type": "done"})
-            return
-        try:
-            for token in get_generator().stream(question, items, arabic):
-                yield _sse({"type": "token", "text": token})
-        except Exception as e:
-            logger.error(f"Error during streaming generation: {e}")
-            yield _sse({"type": "error", "detail": "Answer generation failed."})
+        else:
+            try:
+                for token in get_generator().stream(question, items, arabic):
+                    if first_token_ms is None:
+                        first_token_ms = round((time.perf_counter() - t_gen) * 1000)
+                    parts.append(token)
+                    yield _sse({"type": "token", "text": token})
+            except Exception as e:
+                logger.error(f"Error during streaming generation: {e}")
+                yield _sse({"type": "error", "detail": "Answer generation failed."})
+        # A span can't stay open across yields, so the trace is recorded once the stream ends.
+        tracing.record_ask_trace(
+            question,
+            sources,
+            "".join(parts),
+            model=get_generator().model_name,
+            endpoint="/ask/stream",
+            timings_ms={
+                "retrieve": retrieve_ms,
+                "time_to_first_token": first_token_ms,
+                "generate_total": round((time.perf_counter() - t_gen) * 1000),
+            },
+        )
         yield _sse({"type": "done"})
 
     return StreamingResponse(
