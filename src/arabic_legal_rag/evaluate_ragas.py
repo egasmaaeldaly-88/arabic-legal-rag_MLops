@@ -305,6 +305,17 @@ def mean_scores(per_question: list[dict], names: list[str]) -> dict:
     return means
 
 
+def _cache_only_scorer(sub, metric_choice, embeddings):
+    """Stand-in judge for --cache-only: scores nothing, so only cached scores are reported."""
+    import pandas as pd
+
+    n = len(sub["user_input"])
+    return pd.DataFrame({m: [float("nan")] * n for m in _metrics_for(metric_choice)})
+
+
+MAX_SCORE_ATTEMPTS = 3  # runs a question may stay incomplete before its gaps are accepted
+
+
 def score_in_batches(
     rows: dict,
     metric_choice: str,
@@ -338,7 +349,7 @@ def score_in_batches(
         logger.info(f"Scoring batch {b}/{len(batches)} ({len(idxs)} questions)")
         df = scorer(sub, metric_choice, embeddings)
 
-        failed = 0
+        failed = partial = 0
         for pos, i in enumerate(idxs):
             entry = {}
             for m in names:
@@ -349,18 +360,30 @@ def score_in_batches(
                 # Do NOT cache it, so the next run retries this question.
                 failed += 1
                 continue
-            cache[keys[i]] = entry
+            partial_key = keys[i] + "|partial"
+            attempts = cache.get(partial_key, {}).get("attempts", 0) + 1
+            if all(v is not None for v in entry.values()) or attempts >= MAX_SCORE_ATTEMPTS:
+                cache[keys[i]] = entry  # complete (or gaps accepted after repeated attempts)
+                cache.pop(partial_key, None)
+            else:
+                # Some judgments failed (429 / daily quota). Keep what we got, but not as a
+                # final result: the next run re-scores this question to fill the gaps.
+                cache[partial_key] = {"attempts": attempts, "scores": entry}
+                partial += 1
         _save_cache(scores_path, cache)  # progress is on disk before anything else happens
 
-        if failed == len(idxs) and len(idxs) >= 3:  # tiny batches can be NaN legitimately
+        incomplete = failed + partial
+        if incomplete == len(idxs) and len(idxs) >= 3:  # tiny batches can be NaN legitimately
             logger.error(
-                f"All {failed} judgments in batch {b} failed (likely the judge's rate limit "
-                "or daily quota). Stopping; scores so far are saved. Wait, then re-run the "
-                "same command to resume."
+                f"All {incomplete} questions in batch {b} are missing judgments (likely the "
+                "judge's rate limit or daily quota). Stopping; scores so far are saved. Wait "
+                "(or try tomorrow), then re-run the same command to resume."
             )
             break
-        if failed:
-            logger.warning(f"{failed} question(s) got no score and will be retried next run")
+        if incomplete:
+            logger.warning(
+                f"{incomplete} question(s) have missing judgments and will be retried next run"
+            )
 
         if on_batch is not None:
             done = [cache[k] for k in keys if k in cache]
@@ -369,7 +392,10 @@ def score_in_batches(
             logger.info(f"Cooling down for {cooldown:.0f}s ...")
             time.sleep(cooldown)
 
-    return [cache.get(k, dict.fromkeys(names)) for k in keys]
+    return [
+        cache.get(k) or cache.get(k + "|partial", {}).get("scores") or dict.fromkeys(names)
+        for k in keys
+    ]
 
 
 # -------------------------------------------------------------------- main
@@ -384,6 +410,11 @@ def parse_args(argv=None):
     p.add_argument("--batch-size", type=int, default=10, help="questions judged per batch")
     p.add_argument("--cooldown", type=float, default=0.0, help="seconds to pause between batches")
     p.add_argument("--no-cache", action="store_true")
+    p.add_argument(
+        "--cache-only", action="store_true",
+        help="never call the judge: report only the scores already cached (use when the "
+             "judge's daily quota is used up). Questions without a cached score stay unscored.",
+    )
     p.add_argument("--report-dir", default="reports")
     args = p.parse_args(argv)
     if args.batch_size < 1:
@@ -441,6 +472,8 @@ def main(argv=None) -> int:
             logger.info(f"Batch {batch_no}/{n_batches} done: {scored}/{total} scored, "
                         f"running faithfulness {shown}")
 
+        if args.cache_only:
+            logger.warning("--cache-only: the judge is NOT called; only cached scores are reported")
         logger.info(f"Running RAGAS ({args.metrics}) with judge {judge_model} "
                     f"in batches of {args.batch_size} ...")
         try:
@@ -448,6 +481,7 @@ def main(argv=None) -> int:
                 rows, args.metrics, judge_model, retriever.vectorstore.embedding_function,
                 Path(args.scores_cache), batch_size=args.batch_size, cooldown=args.cooldown,
                 use_cache=not args.no_cache, on_batch=log_batch,
+                scorer=_cache_only_scorer if args.cache_only else None,
             )
         except BaseException:
             mlflow.set_tag("evaluation_status", "INCOMPLETE")
