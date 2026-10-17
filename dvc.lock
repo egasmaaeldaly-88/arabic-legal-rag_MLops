@@ -43,8 +43,8 @@ stages:
       size: 9737
     - path: data/vector_store_bgem3/
       hash: md5
-      md5: 7cbbc15dad1c966aefd0d74e7aef013a.dir
-      size: 6575686
+      md5: 1d5e7c854433a0a29079babb69829d4b.dir
+      size: 6560940
       nfiles: 2
     - path: src/arabic_legal_rag/eval.py
       hash: md5
@@ -96,8 +96,8 @@ stages:
       size: 9737
     - path: data/vector_store_bgem3/
       hash: md5
-      md5: a47fec455e6a72f0b43dfcc000bff620.dir
-      size: 6571300
+      md5: 1d5e7c854433a0a29079babb69829d4b.dir
+      size: 6560940
       nfiles: 2
     - path: src/arabic_legal_rag/train_families.py
       hash: md5
