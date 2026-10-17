@@ -2,7 +2,7 @@
 #   STABLE_IMAGE: current production image      CANARY_IMAGE: the new version under test
 #
 #   STABLE_IMAGE=arabic-legal-rag-bento:stable CANARY_IMAGE=arabic-legal-rag-bento:canary \
-#     docker compose -f deploy/canary/docker-compose.canary.yml up -d
+#     docker compose -f deploy/canary/compose.canary.yml up -d
 #
 # Clients call http://localhost:8080 (same API as the single service).
 services:
