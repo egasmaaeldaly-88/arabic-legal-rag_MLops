@@ -1,0 +1,3 @@
+2026-10-15T01:35:06+00:00 ALERT: RAG faithfulness 0.720 < 0.80 (questions=20, judge=test, generator=test)
+2026-10-16T20:35:20+00:00 ALERT: RAG faithfulness 1.000 < 1.10 (questions=5, judge=openai/gpt-oss-120b, generator=extractive:none)
+2026-10-17T00:12:08+00:00 ALERT: RAG faithfulness 1.000 < 1.10 (questions=5, judge=openai/gpt-oss-120b, generator=extractive:none)
