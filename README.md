@@ -105,15 +105,18 @@ To test real-time token streaming, execute the following commands in PowerShell:
 ```powershell
 python -c "import json; open('q.json','w',encoding='utf-8').write(json.dumps({'question':'ما هو التزام الشخص بالتعويض عن الأعمال غير المشروعة؟'}, ensure_ascii=False))"
 curl.exe -N -X POST http://localhost:8000/ask_stream -H "Content-Type: application/json" -d "@q.json"
+```
 
-Streamed Real-Time Output:
+Streamed output (tokens appear progressively; the last line lists the cited articles):
 
+```text
 يكون الشخص مسؤولاً عن أعماله غير المشروعة متى صدرت منه وهو مميز وفقاً للمادة 164. كما يحق لكل من وقع عليه اعتداء غير مشروع في حق من حقوق شخصيته أن يطلب وقف هذا الاعتداء مع التعويض عن الضرر طبقاً للمادة 50. وفي حال وقوع الضرر من شخص غير مميز دون وجود مسؤول عنه، يجوز للقاضي إلزام من وقع منه الضرر بتعويض عادل مراعيًا مركز الخصوم بموجب المادة 164.
 
 Sources: مادة 164, مادة 50, مادة 172
+```
 
-Note: The -N flag disables output buffering in curl, enabling progressive token display as generation occurs.
-Full live traces for each streaming execution are automatically attached to Langfuse (trace=...).
+The `-N` flag disables output buffering in curl, so tokens are displayed as they are generated.
+With Langfuse configured (see *Monitoring*), each streaming request also records a trace when the stream ends.
 
 ## Data pipeline
 
@@ -315,7 +318,7 @@ When the API runs in Docker, point it at the host with
 - `/ask/stream` (and BentoML `/ask_stream`) record their trace when the stream finishes; the
   durations (retrieve, time to first token, total) are stored in the trace metadata.
 - `reports/ragas_results.csv` has a `langfuse_trace_id` column linking each question to its trace.
-- Screenshots: a trace with its spans and the four RAGAS scores `reports/langfuse_trace.png`; the Scores table `reports/langfuse_scores.png`.
+- Screenshot: one trace with its spans (`ask` → `retrieve` + `generate`) and its four RAGAS scores, next to the Scores filter: `reports/langfuse_scores.png`.
 
 ### Alert: faithfulness < 0.80
 
@@ -427,6 +430,9 @@ If an edit does not show up in the running gateway (some editors replace the fil
 - **The vLLM stack was not run end-to-end on the author's laptop** (no NVIDIA GPU). CI validates both compose
   files and builds and smoke-tests the BentoML image; the Groq and extractive backends are the ones that were
   exercised.
+- **The canary rollout is documented but was not run end-to-end on the author's machine** (it starts two
+  BentoML containers that each load bge-m3, which does not fit next to the other services in the laptop's
+  Docker memory). The nginx and compose files are validated for syntax only.
 - **Retrieval depends on wording.** Each article is embedded on its own text, so a question phrased far from the
   article's legal wording can retrieve related articles instead of the right one. Example: *"المسؤولية عن العمل
   الشخصي"* returns articles about liability for others' acts, while Article 163 (*"كل خطأ سبب ضررا للغير يلزم

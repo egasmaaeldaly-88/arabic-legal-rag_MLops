@@ -29,3 +29,4 @@ src/arabic_legal_rag/tags.py
 *.pyc
 data/.cache/
 .cache/
+q.json

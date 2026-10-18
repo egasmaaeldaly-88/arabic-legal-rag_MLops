@@ -83,6 +83,24 @@ jobs:
         --num-questions 20 --batch-size 5 --cooldown 20
         --metrics faithfulness --threshold 0.75
 
+    - name: Faithfulness alert (notify when faithfulness < 0.80)
+      if: always() && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+      env:
+        ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+      run: |
+        # Notification only: the 0.75 gate above is what fails the build. Exit code 2 = alert
+        # fired (between 0.75 and 0.80 the gate passes but we still want to hear about it),
+        # 1 = no usable score (the gate step already reports that).
+        set +e
+        python -m arabic_legal_rag.alerting --threshold 0.80
+        code=$?
+        if [ "$code" = "2" ]; then
+          echo "::warning::Faithfulness is below 0.80 - alert triggered (see reports/alerts.log)"
+        elif [ "$code" = "1" ]; then
+          echo "::warning::No usable faithfulness score, nothing to alert on"
+        fi
+        exit 0
+
     - name: Upload RAGAS report
       if: always()
       uses: actions/upload-artifact@v4
