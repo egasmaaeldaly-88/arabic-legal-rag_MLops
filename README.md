@@ -15,7 +15,7 @@ versioned data, tracked experiments, CI quality gate, containerized serving, mon
 ```bash
 docker pull ghcr.io/egasmaaeldaly-88/arabic-legal-rag:latest
 docker run -d --name rag -p 8000:8000 -e GENERATOR_BACKEND=extractive ghcr.io/egasmaaeldaly-88/arabic-legal-rag:latest
-curl -X POST http://localhost:8000/ask -H "Content-Type: application/json" -d '{"question": "ما هي المسؤولية عن العمل الشخصي؟"}'
+curl -X POST http://localhost:8000/ask -H "Content-Type: application/json" -d '{"question": "ما جزاء من يرتكب خطأ يسبب ضررا للغير؟"}'
 ```
 
 The image already contains the corpus, the bge-m3 model and the FAISS index. The first start takes
